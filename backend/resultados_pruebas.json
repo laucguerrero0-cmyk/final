@@ -1,0 +1,546 @@
+[
+ {
+  "nombre": "Login admin",
+  "metodo": "POST",
+  "ruta": "/auth/login",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Login laura",
+  "metodo": "POST",
+  "ruta": "/auth/login",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Login juan",
+  "metodo": "POST",
+  "ruta": "/auth/login",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Login con clave incorrecta",
+  "metodo": "POST",
+  "ruta": "/auth/login",
+  "esperado": 401,
+  "obtenido": 401,
+  "ok": true
+ },
+ {
+  "nombre": "Registrar usuario",
+  "metodo": "POST",
+  "ruta": "/auth/registro",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Registrar usuario repetido",
+  "metodo": "POST",
+  "ruta": "/auth/registro",
+  "esperado": 409,
+  "obtenido": 409,
+  "ok": true
+ },
+ {
+  "nombre": "Registro sin campos",
+  "metodo": "POST",
+  "ruta": "/auth/registro",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Listar usuarios (admin)",
+  "metodo": "GET",
+  "ruta": "/usuarios",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Listar usuarios sin token",
+  "metodo": "GET",
+  "ruta": "/usuarios",
+  "esperado": 401,
+  "obtenido": 401,
+  "ok": true
+ },
+ {
+  "nombre": "Listar usuarios siendo usuario normal",
+  "metodo": "GET",
+  "ruta": "/usuarios",
+  "esperado": 403,
+  "obtenido": 403,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar usuario propio",
+  "metodo": "GET",
+  "ruta": "/usuarios/2",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar usuario ajeno",
+  "metodo": "GET",
+  "ruta": "/usuarios/3",
+  "esperado": 403,
+  "obtenido": 403,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar usuario inexistente",
+  "metodo": "GET",
+  "ruta": "/usuarios/999",
+  "esperado": 404,
+  "obtenido": 404,
+  "ok": true
+ },
+ {
+  "nombre": "Actualizar usuario propio",
+  "metodo": "PUT",
+  "ruta": "/usuarios/2",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Token inválido",
+  "metodo": "GET",
+  "ruta": "/usuarios/2",
+  "esperado": 401,
+  "obtenido": 401,
+  "ok": true
+ },
+ {
+  "nombre": "Registrar mascota",
+  "metodo": "POST",
+  "ruta": "/mascotas",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Registrar mascota incompleta",
+  "metodo": "POST",
+  "ruta": "/mascotas",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Registrar mascota sin token",
+  "metodo": "POST",
+  "ruta": "/mascotas",
+  "esperado": 401,
+  "obtenido": 401,
+  "ok": true
+ },
+ {
+  "nombre": "Listar mascotas",
+  "metodo": "GET",
+  "ruta": "/mascotas",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Listar mascotas por especie",
+  "metodo": "GET",
+  "ruta": "/mascotas?especie=Gato",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar mascota",
+  "metodo": "GET",
+  "ruta": "/mascotas/15",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar mascota inexistente",
+  "metodo": "GET",
+  "ruta": "/mascotas/999",
+  "esperado": 404,
+  "obtenido": 404,
+  "ok": true
+ },
+ {
+  "nombre": "Actualizar mascota (dueña)",
+  "metodo": "PUT",
+  "ruta": "/mascotas/15",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Actualizar mascota ajena",
+  "metodo": "PUT",
+  "ruta": "/mascotas/15",
+  "esperado": 403,
+  "obtenido": 403,
+  "ok": true
+ },
+ {
+  "nombre": "Eliminar mascota ajena",
+  "metodo": "DELETE",
+  "ruta": "/mascotas/15",
+  "esperado": 403,
+  "obtenido": 403,
+  "ok": true
+ },
+ {
+  "nombre": "Crear reporte",
+  "metodo": "POST",
+  "ruta": "/reportes",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Crear reporte con tipo inválido",
+  "metodo": "POST",
+  "ruta": "/reportes",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Crear reporte de mascota inexistente",
+  "metodo": "POST",
+  "ruta": "/reportes",
+  "esperado": 404,
+  "obtenido": 404,
+  "ok": true
+ },
+ {
+  "nombre": "Listar reportes",
+  "metodo": "GET",
+  "ruta": "/reportes",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar reporte",
+  "metodo": "GET",
+  "ruta": "/reportes/16",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar reporte inexistente",
+  "metodo": "GET",
+  "ruta": "/reportes/999",
+  "esperado": 404,
+  "obtenido": 404,
+  "ok": true
+ },
+ {
+  "nombre": "Buscar por lugar",
+  "metodo": "GET",
+  "ruta": "/reportes/buscar?lugar=Popay",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Buscar por especie y estado",
+  "metodo": "GET",
+  "ruta": "/reportes/buscar?especie=Perro&estado=abierto",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Buscar por tipo",
+  "metodo": "GET",
+  "ruta": "/reportes/buscar?tipo=encontrada",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Cambiar estado de reporte ajeno",
+  "metodo": "PUT",
+  "ruta": "/reportes/16/estado",
+  "esperado": 403,
+  "obtenido": 403,
+  "ok": true
+ },
+ {
+  "nombre": "Cambiar estado con valor inválido",
+  "metodo": "PUT",
+  "ruta": "/reportes/16/estado",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Cambiar estado (creadora)",
+  "metodo": "PUT",
+  "ruta": "/reportes/16/estado",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Reportes sin token",
+  "metodo": "GET",
+  "ruta": "/reportes",
+  "esperado": 401,
+  "obtenido": 401,
+  "ok": true
+ },
+ {
+  "nombre": "Valores para los filtros",
+  "metodo": "GET",
+  "ruta": "/reportes/filtros",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Resumen del inicio",
+  "metodo": "GET",
+  "ruta": "/reportes/resumen",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Buscar por ciudad",
+  "metodo": "GET",
+  "ruta": "/reportes/buscar?ciudad=Popay%C3%A1n",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Buscar por raza y color",
+  "metodo": "GET",
+  "ruta": "/reportes/buscar?raza=Beagle&color=Caf%C3%A9",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Buscar por nombre",
+  "metodo": "GET",
+  "ruta": "/reportes/buscar?q=Canela",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Crear otro reporte de pérdida",
+  "metodo": "POST",
+  "ruta": "/reportes",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Avistamiento (otro usuario)",
+  "metodo": "POST",
+  "ruta": "/reportes/17/avistamiento",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Avistamiento sin lugar",
+  "metodo": "POST",
+  "ruta": "/reportes/17/avistamiento",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Marcar encontrada sin lugar",
+  "metodo": "PUT",
+  "ruta": "/reportes/17/encontrada",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Marcar encontrada (cualquier usuario)",
+  "metodo": "PUT",
+  "ruta": "/reportes/17/encontrada",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Marcar encontrada otra vez",
+  "metodo": "PUT",
+  "ruta": "/reportes/17/encontrada",
+  "esperado": 409,
+  "obtenido": 409,
+  "ok": true
+ },
+ {
+  "nombre": "Avistamiento de reporte ya resuelto",
+  "metodo": "POST",
+  "ruta": "/reportes/17/avistamiento",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Crear reporte de hallazgo",
+  "metodo": "POST",
+  "ruta": "/reportes",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Reclamar mascota encontrada",
+  "metodo": "POST",
+  "ruta": "/reportes/19/reclamar",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Reclamar un hallazgo propio",
+  "metodo": "POST",
+  "ruta": "/reportes/19/reclamar",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Listar notificaciones",
+  "metodo": "GET",
+  "ruta": "/notificaciones",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Contador de notificaciones",
+  "metodo": "GET",
+  "ruta": "/notificaciones/resumen",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Marcar notificaciones como leídas",
+  "metodo": "PUT",
+  "ruta": "/notificaciones/leer",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Notificaciones sin token",
+  "metodo": "GET",
+  "ruta": "/notificaciones",
+  "esperado": 401,
+  "obtenido": 401,
+  "ok": true
+ },
+ {
+  "nombre": "Subir foto de mascota",
+  "metodo": "POST",
+  "ruta": "/mascotas/15/foto",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Subir foto de mascota ajena",
+  "metodo": "POST",
+  "ruta": "/mascotas/15/foto",
+  "esperado": 403,
+  "obtenido": 403,
+  "ok": true
+ },
+ {
+  "nombre": "Listar planes (público)",
+  "metodo": "GET",
+  "ruta": "/planes",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Contratar fundación sin organización",
+  "metodo": "POST",
+  "ruta": "/suscripciones",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Contratar con periodo inválido",
+  "metodo": "POST",
+  "ruta": "/suscripciones",
+  "esperado": 400,
+  "obtenido": 400,
+  "ok": true
+ },
+ {
+  "nombre": "Contratar plan Hogar",
+  "metodo": "POST",
+  "ruta": "/suscripciones",
+  "esperado": 201,
+  "obtenido": 201,
+  "ok": true
+ },
+ {
+  "nombre": "Consultar mi plan",
+  "metodo": "GET",
+  "ruta": "/suscripciones/mia",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Contratar sin token",
+  "metodo": "POST",
+  "ruta": "/suscripciones",
+  "esperado": 401,
+  "obtenido": 401,
+  "ok": true
+ },
+ {
+  "nombre": "Cancelar mi plan",
+  "metodo": "DELETE",
+  "ruta": "/suscripciones/mia",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Eliminar mascota (dueña)",
+  "metodo": "DELETE",
+  "ruta": "/mascotas/15",
+  "esperado": 200,
+  "obtenido": 200,
+  "ok": true
+ },
+ {
+  "nombre": "Mascota ya eliminada",
+  "metodo": "GET",
+  "ruta": "/mascotas/15",
+  "esperado": 404,
+  "obtenido": 404,
+  "ok": true
+ }
+]

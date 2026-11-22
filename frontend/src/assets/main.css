@@ -1,0 +1,290 @@
+@import './base.css';
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+  flex: 1;
+}
+
+/* ---------- Layout general ---------- */
+.page {
+  padding-top: 2rem;
+}
+
+.page-subtitle {
+  color: var(--color-ink-soft);
+  margin-top: 0.25rem;
+}
+
+/* ---------- Botones ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.3rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-teal);
+  color: var(--color-white);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-teal-dark);
+}
+
+.btn-secondary {
+  background: var(--color-white);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background: var(--color-sun-soft);
+}
+
+.btn-sun {
+  background: var(--color-sun);
+  color: var(--color-ink);
+}
+
+.btn-sun:hover:not(:disabled) {
+  background: #ffc95e;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+}
+
+/* ---------- Tarjetas ---------- */
+.card {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px var(--color-shadow);
+  padding: 1.5rem;
+}
+
+/* ---------- Formularios ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+}
+
+.field input {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: var(--color-mist);
+  color: var(--color-ink);
+}
+
+.field input:focus {
+  outline: 2px solid var(--color-teal);
+  background: var(--color-white);
+}
+
+.field-hint {
+  font-size: 0.78rem;
+  color: var(--color-ink-soft);
+}
+
+.field select,
+.field textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: var(--color-mist);
+  color: var(--color-ink);
+}
+
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid var(--color-teal);
+  background: var(--color-white);
+}
+
+/* ---------- Chips (filtros rápidos) ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-ink);
+  border-radius: 999px;
+  padding: 0.35rem 1rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.chip:hover {
+  background: var(--color-sun-soft);
+}
+
+.chip--on,
+.chip--on:hover {
+  background: var(--color-ink);
+  color: var(--color-white);
+  border-color: var(--color-ink);
+}
+
+/* ---------- Encabezado de página y listas ---------- */
+.page-head {
+  padding: 0.5rem 0 1.6rem;
+}
+
+.page-head h1 {
+  font-size: 2.1rem;
+}
+
+.pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.4rem;
+}
+
+.skeleton {
+  height: 460px;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, #e3eeeb 25%, #f2f8f6 50%, #e3eeeb 75%);
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: brillo 1.3s infinite linear;
+  }
+  @keyframes brillo {
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+.empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.empty h3 {
+  margin: 0.4rem 0;
+}
+
+.empty p {
+  color: var(--color-ink-soft);
+}
+
+/* ---------- Mensajes ---------- */
+.alert {
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.alert-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.alert-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.alert-success {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+/* ---------- Auth (login / registro) ---------- */
+.auth-wrapper {
+  min-height: calc(100vh - 130px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.auth-logo {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 0.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-sun);
+  color: var(--color-ink);
+}
+
+.auth-card h1 {
+  font-size: 1.6rem;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.auth-card .btn {
+  margin-top: 0.4rem;
+}
+
+.auth-switch {
+  margin-top: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.auth-switch a {
+  color: var(--color-teal);
+  font-weight: 700;
+}

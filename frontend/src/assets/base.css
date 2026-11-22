@@ -1,0 +1,60 @@
+/* Paleta "mascotas": verde petróleo, amarillo chapa y bruma celeste */
+:root {
+  --color-ink: #0f3d3e;
+  --color-ink-soft: #3f6264;
+  --color-teal: #17706e;
+  --color-teal-dark: #0f5a58;
+  --color-sun: #f4b942;
+  --color-sun-soft: #fdf0cf;
+  --color-mist: #eef5f3;
+  --color-white: #ffffff;
+
+  --color-success: #2f7d54;
+  --color-success-soft: #dff1e7;
+  --color-danger: #c0392b;
+  --color-danger-soft: #fbe3e0;
+
+  --color-border: rgba(15, 61, 62, 0.14);
+  --color-shadow: rgba(15, 61, 62, 0.1);
+
+  --radius: 14px;
+  --font-title: 'Fredoka', 'Nunito', sans-serif;
+  --font-body: 'Nunito', system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  background: var(--color-mist);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-sun);
+  outline-offset: 2px;
+}

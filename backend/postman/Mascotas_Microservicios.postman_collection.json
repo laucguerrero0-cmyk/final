@@ -1,0 +1,924 @@
+{
+  "info": {
+    "_postman_id": "78aad197-b739-44b5-89dd-2fe45d924edb",
+    "name": "Mascotas Perdidas y Encontradas - Microservicios REST",
+    "description": "Ejecutar primero la carpeta 0. Login: el token se guarda solo y se usa en todas las demás peticiones.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "usuarios_url",
+      "value": "http://localhost:5003"
+    },
+    {
+      "key": "mascotas_url",
+      "value": "http://localhost:5001"
+    },
+    {
+      "key": "reportes_url",
+      "value": "http://localhost:5002"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Login (hacer primero)",
+      "item": [
+        {
+          "name": "Login como laura (usuario)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{usuarios_url}}/auth/login",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"laura\",\n  \"password\": \"laura123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var datos = pm.response.json();",
+                  "pm.collectionVariables.set('token', datos.token);",
+                  "pm.test('Login correcto (200) y token guardado', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{usuarios_url}}/auth/login",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var datos = pm.response.json();",
+                  "pm.collectionVariables.set('token', datos.token);",
+                  "pm.test('Login correcto (200) y token guardado', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como juan (usuario)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{usuarios_url}}/auth/login",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"juan\",\n  \"password\": \"juan123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var datos = pm.response.json();",
+                  "pm.collectionVariables.set('token', datos.token);",
+                  "pm.test('Login correcto (200) y token guardado', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Microservicio Mascotas (5001)",
+      "item": [
+        {
+          "name": "POST /mascotas - Registrar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Canela\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Beagle\",\n  \"color\": \"Café\",\n  \"descripcion\": \"Orejas largas\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mascotas - Listar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mascotas?especie=Gato - Filtrar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas?especie=Gato",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas"
+              ],
+              "query": [
+                {
+                  "key": "especie",
+                  "value": "Gato"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mascotas/1 - Consultar una",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas/1",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /mascotas/1 - Actualizar (como laura)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas/1",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"color\": \"Negro con blanco\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /mascotas/7 - Eliminar (la creada arriba)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas/7",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas",
+                "7"
+              ]
+            },
+            "description": "Cambie el 7 por el id que devolvió el POST."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Microservicio Reportes y búsqueda (5002)",
+      "item": [
+        {
+          "name": "POST /reportes - Crear reporte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{reportes_url}}/reportes",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mascota_id\": 1,\n  \"tipo\": \"perdida\",\n  \"lugar\": \"Popayán - Parque Caldas\",\n  \"descripcion\": \"Se perdió esta mañana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /reportes - Listar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{reportes_url}}/reportes",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /reportes/1 - Consultar uno",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{reportes_url}}/reportes/1",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /reportes/buscar - Por lugar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{reportes_url}}/reportes/buscar?lugar=Popayán",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "lugar",
+                  "value": "Popayán"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /reportes/buscar - Por especie y estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{reportes_url}}/reportes/buscar?especie=Perro&estado=abierto",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "especie",
+                  "value": "Perro"
+                },
+                {
+                  "key": "estado",
+                  "value": "abierto"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /reportes/buscar - Solo encontradas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{reportes_url}}/reportes/buscar?tipo=encontrada",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "tipo",
+                  "value": "encontrada"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /reportes/1/estado - Marcar resuelto (como laura)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{reportes_url}}/reportes/1/estado",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes",
+                "1",
+                "estado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"resuelto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Microservicio Usuarios (5003)",
+      "item": [
+        {
+          "name": "POST /auth/registro - Registrar usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{usuarios_url}}/auth/registro",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "auth",
+                "registro"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Usuario Nuevo\",\n  \"usuario\": \"nuevo1\",\n  \"password\": \"nuevo123\",\n  \"correo\": \"nuevo@mascotas.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /usuarios - Listar (solo admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{usuarios_url}}/usuarios",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Haga login como admin primero. Con otro usuario devuelve 403."
+          }
+        },
+        {
+          "name": "GET /usuarios/2 - Consultar uno",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{usuarios_url}}/usuarios/2",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "2"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /usuarios/2 - Actualizar datos",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{usuarios_url}}/usuarios/2",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "2"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"laura.nueva@mascotas.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Pruebas de seguridad (errores esperados)",
+      "item": [
+        {
+          "name": "Sin token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token falso -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer token.falso.123"
+              }
+            ],
+            "url": {
+              "raw": "{{reportes_url}}/reportes",
+              "host": [
+                "{{reportes_url}}"
+              ],
+              "path": [
+                "reportes"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con clave incorrecta -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{usuarios_url}}/auth/login",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"password\": \"mala\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar usuarios sin ser admin -> 403 (login como laura)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{usuarios_url}}/usuarios",
+              "host": [
+                "{{usuarios_url}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mascota inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mascotas_url}}/mascotas/999",
+              "host": [
+                "{{mascotas_url}}"
+              ],
+              "path": [
+                "mascotas",
+                "999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Código 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
