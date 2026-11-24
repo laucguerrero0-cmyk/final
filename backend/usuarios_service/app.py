@@ -13,14 +13,25 @@ from flask_cors import CORS
 from pymysql.err import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from common.contacto import limpiar_telefono
 from common.db import consultar, ejecutar
+from common.migraciones import asegurar_esquema
 from common.seguridad import crear_token, token_requerido, campos_faltantes
 
 app = Flask(__name__)
 CORS(app)                          # permite que el frontend de Vue (otro puerto) consuma esta API
 app.json.ensure_ascii = False      # para ver bien las tildes en Postman
 
-CAMPOS_PUBLICOS = "id, nombre, usuario, correo, rol, creado_en"
+# Agrega (sin borrar nada) las columnas/tablas nuevas de la base compartida; ver common/migraciones.py
+asegurar_esquema()
+
+
+@app.before_request
+def _esquema_listo():
+    asegurar_esquema()             # si la base no respondió al arrancar, reintenta aquí
+
+
+CAMPOS_PUBLICOS = "id, nombre, usuario, correo, telefono, rol, creado_en"
 
 
 # 1. POST /auth/registro  (público: es la puerta de entrada)
@@ -31,10 +42,14 @@ def registro():
     if falta:
         return jsonify(error="Faltan campos obligatorios", campos=falta), 400
     try:
+        telefono = limpiar_telefono(datos.get("telefono"))
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    try:
         nuevo_id = ejecutar(
-            "INSERT INTO usuarios (nombre, usuario, correo, password_hash, rol) "
-            "VALUES (%s, %s, %s, %s, 'usuario')",
-            (datos["nombre"], datos["usuario"], datos.get("correo"),
+            "INSERT INTO usuarios (nombre, usuario, correo, telefono, password_hash, rol) "
+            "VALUES (%s, %s, %s, %s, %s, 'usuario')",
+            (datos["nombre"], datos["usuario"], datos.get("correo"), telefono,
              generate_password_hash(datos["password"], method="pbkdf2:sha256")),
         )
     except IntegrityError:
@@ -57,7 +72,8 @@ def login():
     return jsonify(
         mensaje="Inicio de sesión correcto",
         token=crear_token(usuario),
-        usuario={"id": usuario["id"], "nombre": usuario["nombre"], "rol": usuario["rol"]},
+        usuario={"id": usuario["id"], "nombre": usuario["nombre"], "rol": usuario["rol"],
+                 "telefono": usuario.get("telefono")},
     )
 
 
@@ -95,9 +111,16 @@ def actualizar_usuario(id):
     if datos.get("password"):
         nuevo_hash = generate_password_hash(datos["password"], method="pbkdf2:sha256")
 
+    telefono = actual.get("telefono")
+    if "telefono" in datos:                       # '' borra el teléfono; si no viene, se conserva
+        try:
+            telefono = limpiar_telefono(datos["telefono"])
+        except ValueError as e:
+            return jsonify(error=str(e)), 400
+
     ejecutar(
-        "UPDATE usuarios SET nombre = %s, correo = %s, password_hash = %s WHERE id = %s",
-        (datos.get("nombre", actual["nombre"]), datos.get("correo", actual["correo"]), nuevo_hash, id),
+        "UPDATE usuarios SET nombre = %s, correo = %s, telefono = %s, password_hash = %s WHERE id = %s",
+        (datos.get("nombre", actual["nombre"]), datos.get("correo", actual["correo"]), telefono, nuevo_hash, id),
     )
     return jsonify(mensaje="Usuario actualizado correctamente")
 

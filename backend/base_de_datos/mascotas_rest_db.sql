@@ -6,6 +6,7 @@ CREATE TABLE `usuarios` (
   `nombre` varchar(100) NOT NULL,
   `usuario` varchar(50) NOT NULL,
   `correo` varchar(100) DEFAULT NULL,
+  `telefono` varchar(20) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
   `rol` enum('admin','usuario') NOT NULL DEFAULT 'usuario',
   `creado_en` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -92,6 +93,7 @@ CREATE TABLE `notificaciones` (
   `reporte_id` int DEFAULT NULL,
   `mascota_id` int DEFAULT NULL,
   `usuario_id` int NOT NULL,
+  `destinatario_id` int DEFAULT NULL,
   `creado_en` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `usuario_id` (`usuario_id`),
@@ -106,6 +108,25 @@ INSERT INTO `notificaciones` (`tipo`,`mensaje`,`reporte_id`,`mascota_id`,`usuari
 INSERT INTO `notificaciones` (`tipo`,`mensaje`,`reporte_id`,`mascota_id`,`usuario_id`,`creado_en`) VALUES ('avistamiento','Laura vio a Max en Popayán - Barrio Bolívar, cerca de la panadería',2,2,2,'2026-11-16 20:15:00');
 INSERT INTO `notificaciones` (`tipo`,`mensaje`,`reporte_id`,`mascota_id`,`usuario_id`,`creado_en`) VALUES ('reclamo','Laura cree que Coco es su mascota y quiere contactarte',11,11,2,'2026-11-17 08:05:00');
 
+
+DROP TABLE IF EXISTS `novedades`;
+CREATE TABLE `novedades` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `reporte_id` int NOT NULL,
+  `mascota_id` int NOT NULL,
+  `usuario_id` int NOT NULL,
+  `tipo` enum('avistamiento','hallazgo','reclamo','resuelto') NOT NULL,
+  `estado` enum('abierta','confirmada','descartada') NOT NULL DEFAULT 'abierta',
+  `lugar` varchar(120) DEFAULT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `condicion` varchar(60) DEFAULT NULL,
+  `hace_minutos` int DEFAULT NULL,
+  `compartir_contacto` tinyint NOT NULL DEFAULT 0,
+  `creado_en` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_novedades_reporte` (`reporte_id`),
+  KEY `idx_novedades_mascota` (`mascota_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `lecturas_notificaciones`;
 CREATE TABLE `lecturas_notificaciones` (
