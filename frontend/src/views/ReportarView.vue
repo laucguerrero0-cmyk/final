@@ -1,19 +1,27 @@
 <script setup>
 import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { ESPECIES, COLORES, unirSugerencias } from '@/utils/format'
+import { prepararFoto } from '@/utils/imagen'
 import mascotasService from '@/services/mascotasService'
 import reportesService from '@/services/reportesService'
 import PetCard from '@/components/mascotas/PetCard.vue'
 
 const router = useRouter()
+const route = useRoute()
+
+// Con /reporte/:id/editar el mismo formulario sirve para corregir un reporte propio
+const idEdicion = route.params.id || null
+const editando = !!idEdicion
+const mascotaId = ref(null)
+const fotoActual = ref(null)
+const cargandoReporte = ref(editando)
 const auth = useAuthStore()
 const { mostrar } = useToast()
 
 const CIUDADES = ['Popayán', 'Cali', 'Bogotá', 'Medellín', 'Pasto', 'Neiva', 'Barranquilla', 'Cartagena', 'Bucaramanga']
-const MAX_FOTO = 4 * 1024 * 1024
 
 // tipo: 'perdida' (perdí a mi mascota) | 'encontrada' (encontré una mascota)
 const tipo = ref('perdida')
@@ -36,7 +44,36 @@ const sugColores = computed(() => unirSugerencias(COLORES, opciones.value.colore
 const telefono = ref('')
 const pideTelefono = computed(() => !auth.usuario?.telefono)
 
+async function cargarParaEditar() {
+  try {
+    const { data } = await reportesService.historial(idEdicion)
+    const r = data.reporte
+    if (!data.es_dueno || r.estado !== 'abierto') {
+      mostrar('Solo puedes editar tus reportes que siguen abiertos.', 'error')
+      router.replace('/mis-reportes')
+      return
+    }
+    mascotaId.value = r.mascota_id
+    tipo.value = r.tipo
+    f.nombre = r.mascota === 'Sin nombre' ? '' : r.mascota
+    f.especie = r.especie || ''
+    f.raza = r.raza || ''
+    f.color = r.color || ''
+    f.caracteristicas = r.descripcion_mascota || ''
+    const corte = (r.lugar || '').indexOf(' - ')
+    f.ciudad = corte >= 0 ? r.lugar.slice(0, corte) : ''
+    f.lugar = corte >= 0 ? r.lugar.slice(corte + 3) : r.lugar || ''
+    f.nota = r.descripcion || ''
+    fotoActual.value = r.foto_url || null
+  } catch (e) {
+    error.value = e.response ? e.response.data?.error || 'No se pudo cargar el reporte' : 'No se pudo conectar con el servidor'
+  } finally {
+    cargandoReporte.value = false
+  }
+}
+
 onMounted(async () => {
+  if (editando) cargarParaEditar()
   try {
     opciones.value = (await reportesService.filtros()).data
   } catch {
@@ -49,23 +86,31 @@ onMounted(async () => {
   }
 })
 
-function elegirFoto(e) {
+// La foto se reduce aquí mismo, así que se puede elegir una de hasta 25 MB
+const procesandoFoto = ref(false)
+
+async function elegirFoto(e) {
   error.value = ''
-  const a = e.target.files[0]
+  const entrada = e.target
+  const a = entrada.files[0]
   if (!a) return
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(a.type)) {
     error.value = 'La foto debe ser JPG, PNG o WEBP'
-    e.target.value = ''
+    entrada.value = ''
     return
   }
-  if (a.size > MAX_FOTO) {
-    error.value = 'La foto pesa más de 4 MB'
-    e.target.value = ''
-    return
+  procesandoFoto.value = true
+  try {
+    const lista = await prepararFoto(a)
+    if (vistaFoto.value) URL.revokeObjectURL(vistaFoto.value)
+    archivo.value = lista
+    vistaFoto.value = URL.createObjectURL(lista)
+  } catch (err) {
+    error.value = err.message
+    entrada.value = ''
+  } finally {
+    procesandoFoto.value = false
   }
-  if (vistaFoto.value) URL.revokeObjectURL(vistaFoto.value)
-  archivo.value = a
-  vistaFoto.value = URL.createObjectURL(a)
 }
 onBeforeUnmount(() => vistaFoto.value && URL.revokeObjectURL(vistaFoto.value))
 
@@ -84,7 +129,7 @@ const previa = computed(() => ({
   descripcion_mascota: f.caracteristicas.trim(),
   lugar: lugarCompleto.value || 'Ciudad - Barrio o lugar',
   descripcion: f.nota.trim(),
-  foto_url: vistaFoto.value,
+  foto_url: vistaFoto.value || fotoActual.value,
   reportado_por: auth.usuario?.nombre,
 }))
 
@@ -100,6 +145,20 @@ async function enviar() {
   }
   enviando.value = true
   try {
+    if (editando) {
+      await mascotasService.actualizar(mascotaId.value, {
+        nombre: f.nombre.trim() || 'Sin nombre',
+        especie: f.especie.trim(),
+        raza: f.raza.trim() || null,
+        color: f.color.trim() || null,
+        descripcion: f.caracteristicas.trim() || null,
+      })
+      if (archivo.value) await mascotasService.subirFoto(mascotaId.value, archivo.value)
+      await reportesService.actualizar(idEdicion, { lugar: lugarCompleto.value, descripcion: f.nota.trim() || null })
+      mostrar('Listo, guardamos los cambios de tu reporte.')
+      router.push('/mis-reportes')
+      return
+    }
     if (pideTelefono.value && telefono.value.trim()) await auth.guardarTelefono(telefono.value.trim())
     const { data: mascota } = await mascotasService.crear({
       nombre: f.nombre.trim() || 'Sin nombre',
@@ -134,13 +193,16 @@ async function enviar() {
 <template>
   <section class="page">
     <header class="page-head">
-      <h1>Reportar una mascota</h1>
-      <p class="page-subtitle">Cuéntanos qué pasó. Mientras más datos des, más fácil será encontrarla.</p>
+      <h1>{{ editando ? 'Editar mi reporte' : 'Reportar una mascota' }}</h1>
+      <p class="page-subtitle">
+        {{ editando ? 'Corrige lo que haga falta. Los cambios se ven de inmediato.' : 'Cuéntanos qué pasó. Mientras más datos des, más fácil será encontrarla.' }}
+      </p>
     </header>
 
     <div class="rep-layout">
       <form class="card rep-form" @submit.prevent="enviar">
-        <div class="rep-tipo" role="radiogroup" aria-label="Tipo de reporte">
+        <p v-if="cargandoReporte" class="field-hint" role="status">Cargando tu reporte…</p>
+        <div v-if="!editando" class="rep-tipo" role="radiogroup" aria-label="Tipo de reporte">
           <button type="button" role="radio" :aria-checked="tipo === 'perdida'" class="rep-op" :class="{ on: tipo === 'perdida' }" @click="tipo = 'perdida'">
             <strong>Perdí a mi mascota</strong><span>Publica una búsqueda</span>
           </button>
@@ -179,8 +241,12 @@ async function enviar() {
             <input id="r-car" v-model="f.caracteristicas" maxlength="255" placeholder="Ej: collar rojo, mancha en la oreja" />
           </div>
           <div class="field">
-            <label for="r-foto">Foto (JPG, PNG o WEBP, máx. 4 MB)</label>
+            <label for="r-foto">Foto (JPG, PNG o WEBP, hasta 25 MB)</label>
             <input id="r-foto" type="file" accept="image/jpeg,image/png,image/webp" @change="elegirFoto" />
+            <span v-if="procesandoFoto" class="field-hint" role="status">Preparando la foto…</span>
+            <span v-else class="field-hint">
+              {{ editando ? 'Elige una foto solo si quieres cambiar la actual. ' : '' }}Se ajusta sola para que suba rápido, sin perder calidad visible.
+            </span>
           </div>
         </fieldset>
 
@@ -203,7 +269,7 @@ async function enviar() {
           </div>
         </fieldset>
 
-        <fieldset v-if="pideTelefono">
+        <fieldset v-if="pideTelefono && !editando">
           <legend>¿Cómo te contactan?</legend>
           <div class="field">
             <label for="r-tel">Tu WhatsApp o teléfono *</label>
@@ -224,8 +290,8 @@ async function enviar() {
           </div>
         </fieldset>
 
-        <button class="btn btn-sun rep-submit" type="submit" :disabled="enviando">
-          {{ enviando ? 'Publicando…' : tipo === 'perdida' ? 'Publicar búsqueda' : 'Publicar hallazgo' }}
+        <button class="btn btn-sun rep-submit" type="submit" :disabled="enviando || procesandoFoto || cargandoReporte">
+          {{ editando ? (enviando ? 'Guardando…' : 'Guardar cambios') : enviando ? 'Publicando…' : tipo === 'perdida' ? 'Publicar búsqueda' : 'Publicar hallazgo' }}
         </button>
       </form>
 

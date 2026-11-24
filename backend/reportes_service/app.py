@@ -1,7 +1,7 @@
 """
 MICROSERVICIO 2: Reportes, búsqueda, historial y notificaciones  (puerto 5002)
-Reportes de mascotas perdidas o encontradas, novedades de cada reporte (avistamientos, avisos de
-hallazgo, reclamos), contacto entre personas y el feed de notificaciones.
+Reportes de mascotas perdidas o encontradas (crear, editar, eliminar, "mis reportes"), novedades de cada
+reporte (avistamientos, avisos de hallazgo con foto, reclamos), contacto entre personas y notificaciones.
 Todos los endpoints exigen token JWT.
 """
 import datetime
@@ -14,12 +14,14 @@ from flask_cors import CORS
 
 from common.contacto import texto_o_none
 from common.db import consultar, ejecutar
+from common.fotos import DemasiadasFotos, borrar_foto, foto_es_de, guardar_foto, validar_foto_url
 from common.migraciones import asegurar_esquema
 from common.seguridad import token_requerido, campos_faltantes
 
 app = Flask(__name__)
 CORS(app)                          # permite que el frontend de Vue (otro puerto) consuma esta API
 app.json.ensure_ascii = False
+app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024        # solo las fotos son grandes (máx. 5 MB cada una)
 
 # Agrega (sin borrar nada) las columnas/tablas nuevas de la base compartida; ver common/migraciones.py
 asegurar_esquema()
@@ -54,6 +56,11 @@ def _dato_invalido(e):
     return jsonify(error=str(e)), 400
 
 
+@app.errorhandler(413)
+def _muy_grande(_):
+    return jsonify(error="La foto pesa más de 5 MB. Prueba con otra o con menos calidad"), 413
+
+
 # ---------------------------------------------------------------- utilidades
 def primer_nombre():
     """Primer nombre de quien hace la petición (para armar los mensajes)."""
@@ -79,6 +86,17 @@ def leer_texto(datos, campo, maximo, nombre):
         return texto_o_none(datos.get(campo), maximo)
     except ValueError:
         raise DatoInvalido(f"{nombre} no puede tener más de {maximo} caracteres")
+
+
+def leer_foto(datos):
+    """Foto opcional de un aviso: debe haberla subido esta misma persona (POST /reportes/fotos)."""
+    try:
+        url = validar_foto_url(datos.get("foto_url"))
+    except ValueError:
+        raise DatoInvalido("La foto no es válida")
+    if url and not foto_es_de(url, g.usuario["id"]):
+        raise DatoInvalido("La foto no es válida. Súbela de nuevo")
+    return url
 
 
 def leer_si_no(datos, campo, por_defecto):
@@ -134,13 +152,13 @@ def notificar(tipo, mensaje, reporte_id, mascota_id, destinatario_id=None):
 
 
 def registrar_novedad(reporte, tipo, lugar=None, descripcion=None, condicion=None,
-                      hace_minutos=None, compartir_contacto=False, estado="abierta"):
+                      hace_minutos=None, compartir_contacto=False, estado="abierta", foto_url=None):
     """Anota una novedad en el historial del reporte."""
     return ejecutar(
         "INSERT INTO novedades (reporte_id, mascota_id, usuario_id, tipo, estado, lugar, descripcion, "
-        "condicion, hace_minutos, compartir_contacto) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        "condicion, foto_url, hace_minutos, compartir_contacto) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
         (reporte["id"], reporte["mascota_id"], g.usuario["id"], tipo, estado, lugar, descripcion,
-         condicion, hace_minutos, 1 if compartir_contacto else 0),
+         condicion, foto_url, hace_minutos, 1 if compartir_contacto else 0),
     )
 
 
@@ -281,6 +299,35 @@ def resumen():
     )
 
 
+# 5b. GET /reportes/mios  -> todos MIS reportes (abiertos primero), con cuántos avisos tiene cada uno
+@app.route("/reportes/mios", methods=["GET"])
+@token_requerido()
+def mis_reportes():
+    resultados = consultar(
+        SQL_REPORTES + "WHERE r.usuario_id = %s ORDER BY (r.estado = 'abierto') DESC, r.fecha DESC, r.id DESC",
+        (g.usuario["id"],),
+    )
+    agregar_ultimo_avistamiento(resultados)
+    return jsonify(total=len(resultados), resultados=resultados)
+
+
+# 5c. POST /reportes/fotos  -> sube la foto que acompañará un aviso (multipart/form-data, campo "foto")
+#     Responde con foto_url, que luego se envía en "¡La encontré!" o "La vi por aquí".
+@app.route("/reportes/fotos", methods=["POST"])
+@token_requerido()
+def subir_foto_aviso():
+    archivo = request.files.get("foto")
+    if not archivo or not archivo.filename:
+        return jsonify(error="Falta el archivo (campo 'foto')"), 400
+    try:
+        foto_url = guardar_foto(archivo, g.usuario["id"], prefijo="aviso")
+    except DemasiadasFotos as e:
+        return jsonify(error=str(e)), 429
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(mensaje="Foto guardada", foto_url=foto_url), 201
+
+
 # 6. GET /reportes/<id>  -> consultar un reporte
 @app.route("/reportes/<int:id>", methods=["GET"])
 @token_requerido()
@@ -290,6 +337,55 @@ def consultar_reporte(id):
         return jsonify(error="Reporte no encontrado"), 404
     agregar_ultimo_avistamiento([reporte])
     return jsonify(reporte)
+
+
+# 6b. PUT /reportes/<id>  -> corregir el lugar o la descripción (solo quien creó el reporte)
+#     Los datos de la mascota (nombre, raza, foto...) se corrigen en PUT /mascotas/<mascota_id>.
+@app.route("/reportes/<int:id>", methods=["PUT"])
+@token_requerido()
+def editar_reporte(id):
+    reporte = consultar("SELECT * FROM reportes WHERE id = %s", (id,), uno=True)
+    if not reporte:
+        return jsonify(error="Reporte no encontrado"), 404
+    if not es_dueno_o_admin(reporte):
+        return jsonify(error="Solo quien creó el reporte o un administrador puede editarlo"), 403
+
+    datos = request.get_json(silent=True) or {}
+    lugar = leer_texto(datos, "lugar", 120, "El lugar") if "lugar" in datos else reporte["lugar"]
+    if not lugar:
+        return jsonify(error="El lugar no puede quedar vacío"), 400
+    descripcion = leer_texto(datos, "descripcion", 255, "La descripción") if "descripcion" in datos else reporte["descripcion"]
+    ejecutar("UPDATE reportes SET lugar = %s, descripcion = %s WHERE id = %s", (lugar, descripcion, id))
+    return jsonify(mensaje="Reporte actualizado correctamente")
+
+
+# 6c. DELETE /reportes/<id>  -> eliminar el reporte (solo quien lo creó)
+#     Se borran también su historial, sus avisos y sus fotos; y la mascota si ya no tiene otros reportes.
+@app.route("/reportes/<int:id>", methods=["DELETE"])
+@token_requerido()
+def eliminar_reporte(id):
+    reporte = consultar("SELECT * FROM reportes WHERE id = %s", (id,), uno=True)
+    if not reporte:
+        return jsonify(error="Reporte no encontrado"), 404
+    if not es_dueno_o_admin(reporte):
+        return jsonify(error="Solo quien creó el reporte o un administrador puede eliminarlo"), 403
+
+    fotos = [n["foto_url"] for n in consultar("SELECT foto_url FROM novedades WHERE reporte_id = %s", (id,))]
+    ejecutar("DELETE FROM novedades WHERE reporte_id = %s", (id,))
+    ejecutar("DELETE FROM notificaciones WHERE reporte_id = %s", (id,))
+    ejecutar("DELETE FROM reportes WHERE id = %s", (id,))
+    for foto in fotos:
+        borrar_foto(foto)
+
+    quedan = consultar("SELECT COUNT(*) AS n FROM reportes WHERE mascota_id = %s", (reporte["mascota_id"],), uno=True)["n"]
+    if quedan == 0:
+        mascota = consultar("SELECT foto_url FROM mascotas WHERE id = %s", (reporte["mascota_id"],), uno=True)
+        ejecutar("DELETE FROM novedades WHERE mascota_id = %s", (reporte["mascota_id"],))
+        ejecutar("DELETE FROM notificaciones WHERE mascota_id = %s", (reporte["mascota_id"],))
+        ejecutar("DELETE FROM mascotas WHERE id = %s", (reporte["mascota_id"],))
+        if mascota:
+            borrar_foto(mascota["foto_url"])
+    return jsonify(mensaje="Reporte eliminado correctamente")
 
 
 # 7. PUT /reportes/<id>/estado  -> cambiar el estado (abierto / resuelto)
@@ -342,6 +438,7 @@ def marcar_encontrada(id):
     lugar = leer_texto(datos, "lugar", 120, "El lugar")
     descripcion = leer_texto(datos, "descripcion", 255, "Los detalles")
     condicion = leer_texto(datos, "condicion", 60, "El estado")
+    foto_url = leer_foto(datos)          # foto de cómo está la mascota, para que su dueño compare
 
     previo = consultar(
         "SELECT id FROM novedades WHERE reporte_id = %s AND usuario_id = %s AND tipo = 'hallazgo' "
@@ -351,11 +448,11 @@ def marcar_encontrada(id):
 
     mascota = consultar("SELECT * FROM mascotas WHERE id = %s", (reporte["mascota_id"],), uno=True)
     registrar_novedad(reporte, "hallazgo", lugar=lugar, descripcion=descripcion, condicion=condicion,
-                      compartir_contacto=leer_si_no(datos, "compartir_contacto", True))
+                      compartir_contacto=leer_si_no(datos, "compartir_contacto", True), foto_url=foto_url)
     texto = f"{primer_nombre()} dice que encontró a {titulo_mascota(mascota)} en {lugar}"
     if condicion:
         texto += f" ({condicion.lower()})"
-    texto += ". Revisa el historial y confirma si es ella"
+    texto += ". Mira su foto en el historial y confirma si es ella" if foto_url else ". Revisa el historial y confirma si es ella"
     notificar("encontrada", texto, id, mascota["id"], destinatario_id=reporte["usuario_id"])
     return jsonify(
         mensaje="¡Gracias! Le avisamos a quien la busca. Escríbele o llámale para coordinar la entrega",
@@ -380,6 +477,7 @@ def registrar_avistamiento(id):
     lugar = leer_texto(datos, "lugar", 120, "El lugar")
     descripcion = leer_texto(datos, "descripcion", 255, "Los detalles")
     condicion = leer_texto(datos, "condicion", 60, "El estado")
+    foto_url = leer_foto(datos)
     try:
         hace_minutos = int(datos.get("hace_minutos") or 0)
     except (TypeError, ValueError):
@@ -389,7 +487,8 @@ def registrar_avistamiento(id):
 
     mascota = consultar("SELECT * FROM mascotas WHERE id = %s", (reporte["mascota_id"],), uno=True)
     registrar_novedad(reporte, "avistamiento", lugar=lugar, descripcion=descripcion, condicion=condicion,
-                      hace_minutos=hace_minutos, compartir_contacto=leer_si_no(datos, "compartir_contacto", False))
+                      hace_minutos=hace_minutos, compartir_contacto=leer_si_no(datos, "compartir_contacto", False),
+                      foto_url=foto_url)
 
     texto = f"{primer_nombre()} vio a {titulo_mascota(mascota)} en {lugar} ({texto_hace(hace_minutos)})"
     if condicion:
@@ -469,7 +568,7 @@ def historial(id):
     )
     novedades = consultar(
         "SELECT n.id, n.reporte_id, n.usuario_id, n.tipo, n.estado, n.lugar, n.descripcion, n.condicion, "
-        "n.hace_minutos, n.compartir_contacto, n.creado_en, u.nombre AS usuario, u.telefono, u.correo, "
+        "n.foto_url, n.hace_minutos, n.compartir_contacto, n.creado_en, u.nombre AS usuario, u.telefono, u.correo, "
         "rp.usuario_id AS dueno_id, rp.estado AS estado_reporte "
         "FROM novedades n JOIN usuarios u ON u.id = n.usuario_id JOIN reportes rp ON rp.id = n.reporte_id "
         "WHERE n.mascota_id = %s ORDER BY n.id",
@@ -486,7 +585,7 @@ def historial(id):
             "clave": f"r{r['id']}", "clase": "reporte", "tipo": r["tipo"], "estado": r["estado"],
             "fecha": r["fecha"], "usuario": r["usuario"], "usuario_id": r["usuario_id"],
             "lugar": r["lugar"], "descripcion": r["descripcion"], "reporte_id": r["id"],
-            "condicion": None, "visto_en": None, "puede_revisar": False, "contacto": None,
+            "condicion": None, "foto_url": None, "visto_en": None, "puede_revisar": False, "contacto": None,
             "orden": (r["fecha"], 0, r["id"]),
         })
     for n in novedades:
@@ -495,7 +594,8 @@ def historial(id):
             "clave": f"n{n['id']}", "clase": "novedad", "id": n["id"], "tipo": n["tipo"], "estado": n["estado"],
             "fecha": n["creado_en"], "visto_en": momento_visto(n["creado_en"], n["hace_minutos"]),
             "usuario": n["usuario"], "usuario_id": n["usuario_id"], "lugar": n["lugar"],
-            "descripcion": n["descripcion"], "condicion": n["condicion"], "reporte_id": n["reporte_id"],
+            "descripcion": n["descripcion"], "condicion": n["condicion"], "foto_url": n["foto_url"],
+            "reporte_id": n["reporte_id"],
             "puede_revisar": bool(
                 mio and n["tipo"] in ("hallazgo", "reclamo") and n["estado"] == "abierta"
                 and n["estado_reporte"] == "abierto"

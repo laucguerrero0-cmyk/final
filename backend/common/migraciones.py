@@ -2,8 +2,8 @@
 Migración automática y segura de la base de datos.
 
 Los 3 microservicios comparten una sola base (TiDB). Las funciones nuevas (contacto, historial de
-novedades y avisos dirigidos) necesitan 2 columnas y 1 tabla nuevas. En vez de pedirte que ejecutes
-SQL a mano, cada servicio llama a `asegurar_esquema()` al arrancar:
+novedades, avisos dirigidos y fotos guardadas en la base) necesitan tablas y columnas nuevas. En vez de
+pedirte que ejecutes SQL a mano, cada servicio llama a `asegurar_esquema()` al arrancar:
 
   - solo AGREGA lo que falta (nunca borra ni modifica datos existentes),
   - es idempotente: si ya existe, no hace nada,
@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS `novedades` (
   `lugar` varchar(120) DEFAULT NULL,
   `descripcion` varchar(255) DEFAULT NULL,
   `condicion` varchar(60) DEFAULT NULL,
+  `foto_url` varchar(255) DEFAULT NULL,
   `hace_minutos` int DEFAULT NULL,
   `compartir_contacto` tinyint NOT NULL DEFAULT 0,
   `creado_en` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,10 +39,24 @@ CREATE TABLE IF NOT EXISTS `novedades` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 """
 
+# Fotos de las mascotas y de los avisos: viven en la base porque Render borra los archivos del servidor
+CREAR_FOTOS = """
+CREATE TABLE IF NOT EXISTS `fotos` (
+  `nombre` varchar(100) NOT NULL,
+  `tipo` varchar(30) NOT NULL,
+  `contenido` longblob NOT NULL,
+  `usuario_id` int DEFAULT NULL,
+  `creado_en` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`nombre`),
+  KEY `idx_fotos_usuario` (`usuario_id`, `creado_en`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+"""
+
 # (tabla, columna, sentencia que la agrega)
 COLUMNAS = [
     ("usuarios", "telefono", "ALTER TABLE usuarios ADD COLUMN telefono VARCHAR(20) NULL AFTER correo"),
     ("notificaciones", "destinatario_id", "ALTER TABLE notificaciones ADD COLUMN destinatario_id INT NULL"),
+    ("novedades", "foto_url", "ALTER TABLE novedades ADD COLUMN foto_url VARCHAR(255) NULL AFTER condicion"),
 ]
 
 _candado = threading.Lock()
@@ -71,6 +86,8 @@ def asegurar_esquema():
             return False
         _ultimo_intento = time.time()
         try:
+            ejecutar(CREAR_NOVEDADES)
+            ejecutar(CREAR_FOTOS)
             for tabla, columna, sentencia in COLUMNAS:
                 if _existe_columna(tabla, columna):
                     continue
@@ -80,7 +97,6 @@ def asegurar_esquema():
                     # Otro servicio pudo haberla creado justo antes: si ya existe, todo bien
                     if not _existe_columna(tabla, columna):
                         raise
-            ejecutar(CREAR_NOVEDADES)
             _listo = True
         except Exception as error:  # la app arranca igual; se reintenta en la próxima petición
             print(f"[migraciones] No se pudo actualizar la base de datos: {error}", file=sys.stderr)

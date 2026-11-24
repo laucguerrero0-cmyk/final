@@ -70,6 +70,7 @@ const titulo = computed(() => ESTADOS.find((e) => e.valor === estado.value).text
         :es-mio="r.usuario_id === auth.usuario?.id"
         @reclamar="acciones.abrir('reclamar', $event)"
         @resuelto="acciones.resolver"
+        @eliminar="acciones.eliminar"
       />
     </div>
 

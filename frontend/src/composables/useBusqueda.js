@@ -1,5 +1,6 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import reportesService from '@/services/reportesService'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 // Lógica compartida por Inicio (perdidas) y Encontradas: trae los reportes del servidor
 // aplicando los filtros (ciudad, especie, raza, color, nombre) y los desplegables.
@@ -21,14 +22,14 @@ export function useBusqueda(base, filtrosIniciales = {}) {
   async function buscar(silencioso = false) {
     const numero = ++ultimaPeticion
     if (!silencioso) cargando.value = true
-    error.value = ''
+    if (!silencioso) error.value = ''
     const params = { ...base() }
     for (const [clave, valor] of Object.entries(filtros)) if (valor) params[clave] = valor
     try {
       const { data } = await reportesService.buscar(params)
       if (numero === ultimaPeticion) resultados.value = data.resultados // ignora respuestas viejas
     } catch (e) {
-      if (numero === ultimaPeticion) error.value = mensajeError(e)
+      if (numero === ultimaPeticion && !(silencioso && resultados.value.length)) error.value = mensajeError(e)
     } finally {
       if (numero === ultimaPeticion) cargando.value = false
     }
@@ -50,6 +51,9 @@ export function useBusqueda(base, filtrosIniciales = {}) {
       /* los desplegables quedan vacíos; el error ya se muestra al buscar */
     }
   })
+
+  // La lista se actualiza sola cada 15 s (nuevos reportes, avisos, finales felices)
+  useAutoRefresh(() => buscar(true))
 
   function limpiar() {
     Object.keys(filtros).forEach((k) => (filtros[k] = ''))

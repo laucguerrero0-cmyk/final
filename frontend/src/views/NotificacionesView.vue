@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import notificacionesService from '@/services/notificacionesService'
 import { useNotificacionesStore } from '@/stores/notificaciones'
 import { useToast } from '@/composables/useToast'
@@ -40,6 +41,7 @@ const sinLeer = computed(() => lista.value.filter((n) => !n.leida).length)
 
 async function cargar() {
   try {
+    error.value = ''
     lista.value = (await notificacionesService.listar()).data.notificaciones
   } catch (e) {
     error.value = e.response?.data?.error || 'No se pudieron cargar las notificaciones'
@@ -48,6 +50,7 @@ async function cargar() {
   }
 }
 onMounted(cargar)
+useAutoRefresh(cargar)
 
 async function marcarLeidas() {
   try {

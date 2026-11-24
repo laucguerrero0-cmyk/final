@@ -9,7 +9,7 @@ import PawIcon from '@/components/layout/PawIcon.vue'
 <template>
   <NavBar />
   <main class="container">
-    <RouterView />
+    <RouterView :key="$route.path" />
   </main>
   <footer class="footer">
     <PawIcon /> Mascotas Perdidas y Encontradas · Proyecto académico · Unicomfacauca

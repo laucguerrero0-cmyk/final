@@ -29,6 +29,13 @@ const notif = useNotificacionesStore()
       <span>Reportar</span>
     </RouterLink>
 
+    <RouterLink to="/mis-reportes" class="bn-item">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+      </svg>
+      <span>Mis reportes</span>
+    </RouterLink>
+
     <RouterLink to="/notificaciones" class="bn-item">
       <span class="bn-icon">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -50,7 +57,7 @@ const notif = useNotificacionesStore()
     inset: auto 0 0 0;
     z-index: 40;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     align-items: end;
     padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom));
     background: var(--color-ink);

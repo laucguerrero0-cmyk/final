@@ -28,3 +28,17 @@ CREATE TABLE IF NOT EXISTS `novedades` (
   KEY `idx_novedades_reporte` (`reporte_id`),
   KEY `idx_novedades_mascota` (`mascota_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Fotos guardadas en la base (Render borra los archivos del servidor al dormirse o redesplegar)
+CREATE TABLE IF NOT EXISTS `fotos` (
+  `nombre` varchar(120) NOT NULL,
+  `tipo` varchar(40) NOT NULL,
+  `contenido` longblob NOT NULL,
+  `usuario_id` int NOT NULL,
+  `creado_en` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`nombre`),
+  KEY `idx_fotos_usuario` (`usuario_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Foto del aviso (¡La encontré! / La vi por aquí). Si la columna ya existe, este paso da error y se puede ignorar.
+ALTER TABLE `novedades` ADD COLUMN `foto_url` varchar(255) NULL AFTER `condicion`;

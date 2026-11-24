@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useBusqueda } from '@/composables/useBusqueda'
 import { useAcciones } from '@/composables/useAcciones'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import reportesService from '@/services/reportesService'
 import PetCard from '@/components/mascotas/PetCard.vue'
 import FilterBar from '@/components/mascotas/FilterBar.vue'
@@ -28,6 +29,7 @@ async function cargarResumen() {
   }
 }
 onMounted(cargarResumen)
+useAutoRefresh(cargarResumen)
 
 const acciones = useAcciones(() => {
   buscar(true)
@@ -94,6 +96,7 @@ const acciones = useAcciones(() => {
         @encontrada="acciones.abrir('encontrada', $event)"
         @avistamiento="acciones.abrir('avistamiento', $event)"
         @resuelto="acciones.resolver"
+        @eliminar="acciones.eliminar"
       />
     </div>
 
