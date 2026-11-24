@@ -11,6 +11,7 @@ import uuid
 from flask import Flask, request, jsonify, g, send_from_directory
 from flask_cors import CORS
 
+from common.contacto import capitalizar, texto_o_none
 from common.db import consultar, ejecutar
 from common.seguridad import token_requerido, campos_faltantes
 
@@ -29,6 +30,17 @@ def puede_modificar(mascota):
     return g.usuario["rol"] == "admin" or mascota["usuario_id"] == g.usuario["id"]
 
 
+# Especie, raza y color son texto LIBRE (cada persona escribe lo que necesite: 'Conejo', 'Mestizo', 'Tricolor'...).
+# Se limpian los espacios, se pone la primera letra en mayúscula y se valida el largo que admite la base.
+LIMITES = {"nombre": 80, "especie": 40, "raza": 60, "color": 40, "descripcion": 255}
+CON_MAYUSCULA = ("especie", "raza", "color")
+
+
+def limpiar_campo(campo, valor):
+    texto = texto_o_none(valor, LIMITES[campo])
+    return capitalizar(texto) if campo in CON_MAYUSCULA else texto
+
+
 # 1. POST /mascotas  -> registrar una mascota
 @app.route("/mascotas", methods=["POST"])
 @token_requerido()
@@ -37,11 +49,15 @@ def registrar_mascota():
     falta = campos_faltantes(datos, ["nombre", "especie"])
     if falta:
         return jsonify(error="Faltan campos obligatorios", campos=falta), 400
+    try:
+        limpios = {c: limpiar_campo(c, datos.get(c)) for c in LIMITES}
+    except ValueError as e:
+        return jsonify(error=f"Revisa los datos de la mascota: {e}"), 400
     nuevo_id = ejecutar(
         "INSERT INTO mascotas (nombre, especie, raza, color, descripcion, foto_url, usuario_id) "
         "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        (datos["nombre"], datos["especie"], datos.get("raza"), datos.get("color"),
-         datos.get("descripcion"), datos.get("foto_url"), g.usuario["id"]),
+        (limpios["nombre"], limpios["especie"], limpios["raza"], limpios["color"],
+         limpios["descripcion"], datos.get("foto_url"), g.usuario["id"]),
     )
     return jsonify(mensaje="Mascota registrada correctamente", id=nuevo_id), 201
 
@@ -77,11 +93,15 @@ def actualizar_mascota(id):
         return jsonify(error="Solo el dueño del registro o un administrador puede modificarlo"), 403
 
     datos = request.get_json(silent=True) or {}
+    try:
+        limpios = {c: (limpiar_campo(c, datos[c]) if c in datos else mascota[c]) for c in LIMITES}
+    except ValueError as e:
+        return jsonify(error=f"Revisa los datos de la mascota: {e}"), 400
+    if not limpios["nombre"] or not limpios["especie"]:
+        return jsonify(error="El nombre y la especie no pueden quedar vacíos"), 400
     ejecutar(
         "UPDATE mascotas SET nombre = %s, especie = %s, raza = %s, color = %s, descripcion = %s, foto_url = %s WHERE id = %s",
-        (datos.get("nombre", mascota["nombre"]), datos.get("especie", mascota["especie"]),
-         datos.get("raza", mascota["raza"]), datos.get("color", mascota["color"]),
-         datos.get("descripcion", mascota["descripcion"]),
+        (limpios["nombre"], limpios["especie"], limpios["raza"], limpios["color"], limpios["descripcion"],
          datos.get("foto_url", mascota["foto_url"]), id),
     )
     return jsonify(mensaje="Mascota actualizada correctamente")

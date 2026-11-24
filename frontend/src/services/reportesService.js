@@ -8,13 +8,21 @@ export default {
   crear: (datos) => apiReportes.post('/reportes', datos),
 
   // CTA "¡La encontré!": cualquier usuario puede avisar. `lugar` es obligatorio.
-  marcarEncontrada: (id, { lugar, descripcion }) =>
-    apiReportes.put(`/reportes/${id}/encontrada`, { lugar, descripcion }),
-  // "La vi por aquí": avisa a la comunidad sin cerrar el reporte
-  avistamiento: (id, { lugar, descripcion }) =>
-    apiReportes.post(`/reportes/${id}/avistamiento`, { lugar, descripcion }),
-  // "¡Es mi mascota!": sobre un reporte de hallazgo
-  reclamar: (id, { descripcion }) => apiReportes.post(`/reportes/${id}/reclamar`, { descripcion }),
-  // Para el dueño del reporte: "Ya apareció" / "Ya la entregué"
+  // Datos: { lugar, descripcion, condicion, compartir_contacto }. Responde con el contacto de quien publicó.
+  marcarEncontrada: (id, datos) => apiReportes.put(`/reportes/${id}/encontrada`, datos),
+  // "La vi por aquí": avisa sin cerrar el reporte.
+  // Datos: { lugar, descripcion, condicion, hace_minutos, compartir_contacto }
+  avistamiento: (id, datos) => apiReportes.post(`/reportes/${id}/avistamiento`, datos),
+  // "¡Es mi mascota!": sobre un reporte de hallazgo. Datos: { descripcion, compartir_contacto }
+  reclamar: (id, datos) => apiReportes.post(`/reportes/${id}/reclamar`, datos),
+  // Para quien publicó el reporte: "Ya apareció" / "Ya la entregué"
   cambiarEstado: (id, estado) => apiReportes.put(`/reportes/${id}/estado`, { estado }),
+
+  // Historial de la mascota: reportes y novedades (avistamientos, hallazgos, reclamos)
+  historial: (id) => apiReportes.get(`/reportes/${id}/historial`),
+  // Cómo llamar o escribir a quien publicó el reporte
+  contacto: (id) => apiReportes.get(`/reportes/${id}/contacto`),
+  // Quien publicó el reporte confirma o descarta un aviso ("¿sí era mi mascota?")
+  confirmarNovedad: (id, novedadId) => apiReportes.put(`/reportes/${id}/novedades/${novedadId}/confirmar`),
+  descartarNovedad: (id, novedadId) => apiReportes.put(`/reportes/${id}/novedades/${novedadId}/descartar`),
 }

@@ -26,6 +26,18 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('token', data.token)
       localStorage.setItem('usuario', JSON.stringify(data.usuario))
     },
+    // Trae el teléfono guardado en el servidor (la sesión puede venir de antes de que existiera)
+    async refrescarPerfil() {
+      if (!this.usuario?.id) return
+      const { data } = await authService.perfil(this.usuario.id)
+      this.usuario = { ...this.usuario, telefono: data.telefono || null }
+      localStorage.setItem('usuario', JSON.stringify(this.usuario))
+    },
+    // Guarda el teléfono para que otras personas puedan llamar o escribir por WhatsApp
+    async guardarTelefono(telefono) {
+      await authService.actualizarTelefono(this.usuario.id, telefono)
+      await this.refrescarPerfil()
+    },
     logout() {
       this.token = null
       this.usuario = null

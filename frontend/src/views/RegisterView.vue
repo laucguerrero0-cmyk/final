@@ -10,6 +10,7 @@ const router = useRouter()
 const nombre = ref('')
 const usuario = ref('')
 const correo = ref('')
+const telefono = ref('')
 const password = ref('')
 const confirmar = ref('')
 const error = ref('')
@@ -31,6 +32,7 @@ async function onSubmit() {
       nombre: nombre.value,
       usuario: usuario.value,
       correo: correo.value || null, // el correo es opcional en la API
+      telefono: telefono.value || null, // opcional aquí; se pide al publicar un reporte
       password: password.value,
     })
     exito.value = 'Cuenta creada. Ya puedes iniciar sesión.'
@@ -67,6 +69,19 @@ async function onSubmit() {
         <div class="field">
           <label for="correo">Correo (opcional)</label>
           <input id="correo" v-model.trim="correo" type="email" placeholder="tucorreo@ejemplo.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="telefono">WhatsApp o teléfono (recomendado)</label>
+          <input
+            id="telefono"
+            v-model.trim="telefono"
+            type="tel"
+            inputmode="tel"
+            placeholder="Ej: 300 123 4567"
+            autocomplete="tel"
+            maxlength="20"
+          />
+          <span class="field-hint">Para que puedan avisarte si ven o encuentran a tu mascota. Solo lo ve quien responde a tu reporte.</span>
         </div>
         <div class="field">
           <label for="password">Contraseña</label>

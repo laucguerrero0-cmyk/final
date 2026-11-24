@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import PetAvatar from '@/components/mascotas/PetAvatar.vue'
-import { urlFoto, diasDesde } from '@/utils/format'
+import { urlFoto, diasDesde, haceTiempo } from '@/utils/format'
 
 const props = defineProps({
   reporte: { type: Object, required: true },
@@ -32,6 +32,13 @@ const hace = computed(() => {
 })
 
 const detalles = computed(() => [r.value.especie, r.value.raza, r.value.color].filter(Boolean))
+
+// Pista más reciente de una mascota perdida ("La vi por aquí")
+const avistamiento = computed(() => (perdida.value && !resuelto.value ? r.value.ultimo_avistamiento : null))
+
+// Avisos de hallazgo o reclamo que quien publicó el reporte todavía debe confirmar
+const porRevisar = computed(() => (props.esMio && !resuelto.value ? Number(r.value.por_revisar) || 0 : 0))
+const novedades = computed(() => Number(r.value.novedades_total) || 0)
 const titulo = computed(() => (r.value.mascota === 'Sin nombre' ? `${r.value.especie} sin nombre` : r.value.mascota))
 
 // Compartir por WhatsApp: cada persona que comparte es un posible hallazgo
@@ -68,6 +75,12 @@ const urlWhatsapp = computed(() => {
         </svg>
         <span><strong>{{ perdida ? 'Vista por última vez:' : 'Encontrada en:' }}</strong> {{ r.lugar }}</span>
       </p>
+      <p v-if="avistamiento" class="pet-sighting">
+        <span aria-hidden="true">👀</span>
+        <span>
+          <strong>Vista en {{ avistamiento.lugar }}</strong> · {{ haceTiempo(avistamiento.visto_en) }}
+        </span>
+      </p>
       <p v-if="r.descripcion" class="pet-note">“{{ r.descripcion }}”</p>
       <p class="pet-by">Reportó {{ esMio ? 'tú' : r.reportado_por }}</p>
 
@@ -100,6 +113,20 @@ const urlWhatsapp = computed(() => {
             </svg>
           </a>
         </template>
+
+        <!-- Todo lo que ha pasado con esta mascota: avistamientos, hallazgos y reclamos -->
+        <RouterLink
+          v-if="r.id"
+          :to="{ name: 'historial', params: { id: r.id } }"
+          class="pet-history"
+          :class="{ 'pet-history--alert': porRevisar }"
+        >
+          <span v-if="porRevisar">🔔 {{ porRevisar }} aviso{{ porRevisar === 1 ? '' : 's' }} por revisar</span>
+          <span v-else>
+            Ver historial<template v-if="novedades"> · {{ novedades }} novedad{{ novedades === 1 ? '' : 'es' }}</template>
+          </span>
+          <span aria-hidden="true">→</span>
+        </RouterLink>
       </div>
     </div>
   </article>
@@ -203,6 +230,17 @@ const urlWhatsapp = computed(() => {
   color: var(--color-teal);
 }
 
+.pet-sighting {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  background: #ede4fb;
+  color: #3f2480;
+  font-size: 0.86rem;
+}
+
 .pet-note {
   font-size: 0.88rem;
   font-style: italic;
@@ -238,7 +276,7 @@ const urlWhatsapp = computed(() => {
   color: var(--color-ink);
   font-size: 1rem;
   padding: 0.8rem 1.2rem;
-  white-space: nowrap;
+  min-height: 48px;
   box-shadow: 0 4px 0 #d79a1d;
   transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
 }
@@ -252,8 +290,26 @@ const urlWhatsapp = computed(() => {
 
 .btn-sm-action {
   flex: 1;
-  white-space: nowrap;
+  min-height: 44px;
 }
+
+.pet-history {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 12px;
+  background: var(--color-mist);
+  border: 1px solid var(--color-border);
+  color: var(--color-teal-dark);
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+.pet-history:hover { background: var(--color-sun-soft); }
+.pet-history--alert { background: var(--color-sun-soft); border-color: var(--color-sun); color: var(--color-ink); }
 
 .btn-share {
   flex: none;

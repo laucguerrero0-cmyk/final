@@ -9,9 +9,12 @@ export function urlFoto(url) {
   return url.startsWith('/uploads/') ? API_MASCOTAS + url : url
 }
 
-// MySQL entrega "2026-11-17 08:05:00"; se convierte a Date
+// La base entrega las fechas en UTC ("2026-11-17 08:05:00", ver backend/common/db.py).
+// Se marca con "Z" para que el navegador las convierta a la hora del celular; sin la "Z"
+// las leía como hora local y en Colombia (UTC-5) todo se veía 5 horas en el futuro.
 export function parseFecha(texto) {
-  return new Date(String(texto).replace(' ', 'T'))
+  const t = String(texto).replace(' ', 'T')
+  return new Date(/(Z|[+-]\d\d:?\d\d)$/i.test(t) ? t : t + 'Z')
 }
 
 export function diasDesde(texto) {
@@ -39,8 +42,39 @@ const formatoPesos = new Intl.NumberFormat('es-CO', {
 })
 export const pesos = (valor) => formatoPesos.format(valor)
 
-// Colores de pelaje que usa el formulario y los filtros
-export const COLORES = ['Negro', 'Blanco', 'Café', 'Gris', 'Naranja', 'Dorado', 'Crema']
+// Sugerencias para los campos de texto (siempre se puede escribir cualquier otra cosa)
+export const ESPECIES = ['Perro', 'Gato', 'Conejo', 'Ave', 'Hámster', 'Tortuga']
+export const COLORES = ['Negro', 'Blanco', 'Café', 'Gris', 'Naranja', 'Dorado', 'Crema', 'Tricolor', 'Manchado']
+
+// Une listas de sugerencias sin repetir (sin importar mayúsculas ni tildes)
+export function unirSugerencias(...listas) {
+  const vistos = new Map()
+  for (const lista of listas) {
+    for (const valor of lista || []) {
+      const clave = String(valor).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      if (valor && !vistos.has(clave)) vistos.set(clave, valor)
+    }
+  }
+  return [...vistos.values()]
+}
+
+// Convierte un texto en partes para mostrarlo con los enlaces clicables (sin usar v-html).
+// Los enlaces de mapa se muestran como "Ver en el mapa".
+export function partesConEnlaces(texto) {
+  const t = String(texto || '')
+  const partes = []
+  const patron = /https?:\/\/[^\s]+/g
+  let desde = 0
+  let m
+  while ((m = patron.exec(t))) {
+    if (m.index > desde) partes.push({ texto: t.slice(desde, m.index) })
+    const url = m[0]
+    partes.push({ texto: /maps/i.test(url) ? '📍 Ver en el mapa' : url, url })
+    desde = m.index + url.length
+  }
+  if (desde < t.length) partes.push({ texto: t.slice(desde) })
+  return partes
+}
 
 const PELAJE = {
   negro: '#3a3f45',

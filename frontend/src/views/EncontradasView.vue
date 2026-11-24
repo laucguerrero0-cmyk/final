@@ -84,6 +84,7 @@ const titulo = computed(() => ESTADOS.find((e) => e.valor === estado.value).text
       :reporte="acciones.seleccionada.value"
       :enviando="acciones.enviando.value"
       :error="acciones.errorDialogo.value"
+      :resultado="acciones.resultado.value"
       @confirmar="acciones.confirmar"
       @cerrar="acciones.cerrar"
     />

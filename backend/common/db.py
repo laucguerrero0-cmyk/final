@@ -13,11 +13,14 @@ def conectar():
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=True,
+        connect_timeout=15,
+        # Las fechas siempre salen en UTC; el frontend las convierte a la hora del celular
+        init_command="SET time_zone = '+00:00'",
     )
 
 
 def _texto_fechas(fila):
-    """Convierte las fechas a texto para poder devolverlas en JSON."""
+    """Convierte las fechas a texto (UTC) para poder devolverlas en JSON."""
     for clave, valor in fila.items():
         if hasattr(valor, "isoformat"):
             fila[clave] = valor.strftime("%Y-%m-%d %H:%M:%S")
