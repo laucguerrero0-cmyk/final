@@ -1,9 +1,9 @@
 <script setup>
-import { ref, computed, reactive, onBeforeUnmount } from 'vue'
+import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { COLORES } from '@/utils/format'
+import { ESPECIES, COLORES, unirSugerencias } from '@/utils/format'
 import mascotasService from '@/services/mascotasService'
 import reportesService from '@/services/reportesService'
 import PetCard from '@/components/mascotas/PetCard.vue'
@@ -25,6 +25,29 @@ const archivo = ref(null)
 const vistaFoto = ref(null)
 const error = ref('')
 const enviando = ref(false)
+
+// Especie, raza y color son de escritura libre; estas listas solo ayudan a completar
+const opciones = ref({ especies: [], razas: [], colores: [] })
+const sugEspecies = computed(() => unirSugerencias(ESPECIES, opciones.value.especies))
+const sugRazas = computed(() => unirSugerencias(opciones.value.razas))
+const sugColores = computed(() => unirSugerencias(COLORES, opciones.value.colores))
+
+// Para que quien vea el reporte pueda llamar o escribir por WhatsApp, la cuenta necesita un teléfono
+const telefono = ref('')
+const pideTelefono = computed(() => !auth.usuario?.telefono)
+
+onMounted(async () => {
+  try {
+    opciones.value = (await reportesService.filtros()).data
+  } catch {
+    /* sin sugerencias: igual se puede escribir */
+  }
+  try {
+    await auth.refrescarPerfil() // la sesión puede ser anterior al campo de teléfono
+  } catch {
+    /* si falla, se pide el teléfono igual */
+  }
+})
 
 function elegirFoto(e) {
   error.value = ''
@@ -71,13 +94,18 @@ async function enviar() {
     error.value = 'Escribe el nombre de tu mascota'
     return
   }
+  if (!f.especie.trim()) {
+    error.value = 'Escribe la especie (perro, gato, conejo…)'
+    return
+  }
   enviando.value = true
   try {
+    if (pideTelefono.value && telefono.value.trim()) await auth.guardarTelefono(telefono.value.trim())
     const { data: mascota } = await mascotasService.crear({
       nombre: f.nombre.trim() || 'Sin nombre',
-      especie: f.especie,
+      especie: f.especie.trim(),
       raza: f.raza.trim() || null,
-      color: f.color || null,
+      color: f.color.trim() || null,
       descripcion: f.caracteristicas.trim() || null,
     })
     if (archivo.value) await mascotasService.subirFoto(mascota.id, archivo.value)
@@ -132,20 +160,18 @@ async function enviar() {
             </div>
             <div class="field">
               <label for="r-especie">Especie *</label>
-              <select id="r-especie" v-model="f.especie" required>
-                <option>Perro</option><option>Gato</option><option>Otro</option>
-              </select>
+              <input id="r-especie" v-model="f.especie" list="dl-especie" required maxlength="40" autocomplete="off" placeholder="Ej: Perro, gato, conejo…" />
+              <datalist id="dl-especie"><option v-for="e in sugEspecies" :key="e" :value="e" /></datalist>
             </div>
             <div class="field">
               <label for="r-raza">Raza</label>
-              <input id="r-raza" v-model="f.raza" maxlength="60" placeholder="Ej: Labrador, Criollo" />
+              <input id="r-raza" v-model="f.raza" list="dl-raza" maxlength="60" autocomplete="off" placeholder="Ej: Labrador, criollo, mestizo" />
+              <datalist id="dl-raza"><option v-for="r in sugRazas" :key="r" :value="r" /></datalist>
             </div>
             <div class="field">
               <label for="r-color">Color</label>
-              <select id="r-color" v-model="f.color">
-                <option value="">Sin especificar</option>
-                <option v-for="c in COLORES" :key="c">{{ c }}</option>
-              </select>
+              <input id="r-color" v-model="f.color" list="dl-color" maxlength="40" autocomplete="off" placeholder="Ej: Negro, tricolor, café con blanco" />
+              <datalist id="dl-color"><option v-for="c in sugColores" :key="c" :value="c" /></datalist>
             </div>
           </div>
           <div class="field">
@@ -174,6 +200,27 @@ async function enviar() {
           <div class="field">
             <label for="r-nota">Cuéntanos qué pasó</label>
             <input id="r-nota" v-model="f.nota" maxlength="255" placeholder="Ej: se soltó de la correa en la tarde" />
+          </div>
+        </fieldset>
+
+        <fieldset v-if="pideTelefono">
+          <legend>¿Cómo te contactan?</legend>
+          <div class="field">
+            <label for="r-tel">Tu WhatsApp o teléfono *</label>
+            <input
+              id="r-tel"
+              v-model="telefono"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              required
+              maxlength="20"
+              placeholder="Ej: 300 123 4567"
+            />
+            <span class="field-hint">
+              Cuando alguien avise que la vio o la encontró, podrá llamarte o escribirte. Lo guardamos en tu cuenta y solo se
+              muestra a quien responde a tu reporte.
+            </span>
           </div>
         </fieldset>
 
@@ -230,7 +277,13 @@ input[type='file'] { padding: 0.5rem; background: var(--color-mist); border: 1px
 
 @media (max-width: 900px) {
   .rep-layout { grid-template-columns: 1fr; }
-  .rep-preview { position: static; order: -1; max-width: 340px; }
+  .rep-preview { position: static; max-width: 340px; } /* la vista previa va después del formulario */
   .rep-tipo, .grid2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .rep-form { gap: 1.2rem; }
+  .rep-submit { min-height: 52px; }
+  .rep-preview { max-width: none; }
 }
 </style>

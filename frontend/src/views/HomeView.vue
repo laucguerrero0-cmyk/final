@@ -124,6 +124,7 @@ const acciones = useAcciones(() => {
       :reporte="acciones.seleccionada.value"
       :enviando="acciones.enviando.value"
       :error="acciones.errorDialogo.value"
+      :resultado="acciones.resultado.value"
       @confirmar="acciones.confirmar"
       @cerrar="acciones.cerrar"
     />
@@ -210,8 +211,20 @@ const acciones = useAcciones(() => {
 .plans-banner p { color: #cfe3e0; margin-top: 0.3rem; max-width: 52ch; }
 
 @media (max-width: 860px) {
-  .hero { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 1fr; gap: 1.5rem; padding: 0.6rem 0 1.4rem; }
   .hero h1 { font-size: 1.9rem; }
   .hero-stats { width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .hero h1 { font-size: 1.65rem; }
+  .hero .page-subtitle { font-size: 0.98rem; }
+  .hero-buttons .btn { flex: 1 1 100%; min-height: 48px; }
+  .stat { padding: 0.8rem 0.9rem; }
+  .stat strong { font-size: 2.1rem; }
+  .stat--sun { padding: 1rem; }
+  .stat--sun strong { font-size: 3rem; }
+  .plans-banner { padding: 1.3rem 1.2rem; margin-top: 2rem; }
+  .plans-banner .btn { width: 100%; }
 }
 </style>

@@ -58,8 +58,13 @@ async function marcarLeidas() {
   }
 }
 
-// Al abrir una notificación se va a la mascota (filtrada por su nombre)
+// Al abrir una notificación se va al historial de esa mascota, donde está el detalle de la novedad
+// (y, si es tu reporte, los botones para confirmar el aviso y contactar a quien lo dejó).
 function abrir(n) {
+  if (n.reporte_id) {
+    router.push({ name: 'historial', params: { id: n.reporte_id } })
+    return
+  }
   const destino = n.tipo === 'nuevo_reporte' || n.tipo === 'avistamiento' ? '/' : '/encontradas'
   router.push({ path: destino, query: n.mascota && n.mascota !== 'Sin nombre' ? { q: n.mascota } : {} })
 }
@@ -102,7 +107,7 @@ function abrir(n) {
               <span class="time">{{ haceTiempo(n.creado_en) }}</span>
             </span>
             <span class="msg">{{ n.mensaje }}</span>
-            <span class="go">Ver mascota →</span>
+            <span class="go">{{ n.reporte_id ? 'Ver historial →' : 'Ver mascota →' }}</span>
           </span>
           <span v-if="!n.leida" class="dot" aria-label="Sin leer"></span>
         </button>
@@ -175,4 +180,11 @@ function abrir(n) {
 
 .dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--color-teal); }
 .empty-paw { font-size: 3rem; color: var(--color-sun); }
+
+@media (max-width: 560px) {
+  .item { gap: 0.75rem; padding: 0.8rem; }
+  .thumb { width: 52px; height: 52px; }
+  .msg { font-size: 0.95rem; overflow-wrap: anywhere; }
+  .head-row .btn { width: 100%; }
+}
 </style>

@@ -175,7 +175,7 @@
 
 .pet-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
   gap: 1.4rem;
 }
 
@@ -287,4 +287,33 @@
 .auth-switch a {
   color: var(--color-teal);
   font-weight: 700;
+}
+
+
+/* ---------- Celular ---------- */
+@media (max-width: 860px) {
+  /* La campana pasa a la barra inferior ("Avisos") */
+  .topbar .bell { display: none !important; }
+  /* El aviso flotante queda por encima de la barra inferior */
+  .toast { bottom: calc(5.5rem + env(safe-area-inset-bottom)) !important; }
+}
+
+@media (max-width: 640px) {
+  .container { padding: 0 1rem 5.5rem; }
+  .page { padding-top: 1.2rem; }
+  .page-head { padding-bottom: 1.1rem; }
+  .page-head h1 { font-size: 1.65rem; }
+  .card { padding: 1.1rem; }
+
+  /* Zonas táctiles cómodas y letra de 16px: así iPhone no hace zoom al tocar un campo */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+  .chip { min-height: 40px; display: inline-flex; align-items: center; }
+  .field input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  .field select,
+  .field textarea { font-size: 1rem; min-height: 46px; }
+
+  .pet-grid { gap: 1.1rem; }
+  .skeleton { height: 380px; }
+  .list-head h2 { font-size: 1.35rem; }
 }
