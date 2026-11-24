@@ -8,7 +8,7 @@ const props = defineProps({
   esMio: { type: Boolean, default: false }, // el reporte lo creó el usuario en sesión
   vistaPrevia: { type: Boolean, default: false }, // sin botones (formulario de reportar)
 })
-const emit = defineEmits(['encontrada', 'avistamiento', 'reclamar', 'resuelto'])
+const emit = defineEmits(['encontrada', 'avistamiento', 'reclamar', 'resuelto', 'eliminar'])
 
 const r = computed(() => props.reporte)
 const perdida = computed(() => r.value.tipo === 'perdida')
@@ -113,6 +113,14 @@ const urlWhatsapp = computed(() => {
             </svg>
           </a>
         </template>
+
+        <!-- Solo quien publicó el reporte puede corregirlo o eliminarlo -->
+        <div v-if="esMio" class="pet-owner">
+          <RouterLink v-if="!resuelto" :to="{ name: 'editar', params: { id: r.id } }" class="btn btn-secondary btn-sm-action">
+            ✏️ Editar
+          </RouterLink>
+          <button type="button" class="btn btn-secondary btn-sm-action pet-delete" @click="emit('eliminar', r)">🗑️ Eliminar</button>
+        </div>
 
         <!-- Todo lo que ha pasado con esta mascota: avistamientos, hallazgos y reclamos -->
         <RouterLink
@@ -317,4 +325,7 @@ const urlWhatsapp = computed(() => {
   padding-inline: 0;
   margin-left: auto;
 }
+.pet-owner { flex: 1 1 100%; display: flex; gap: 0.5rem; }
+.pet-owner .btn { flex: 1; text-align: center; }
+.pet-delete { color: var(--color-danger); }
 </style>

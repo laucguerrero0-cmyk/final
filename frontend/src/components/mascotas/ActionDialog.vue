@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { prepararFoto } from '@/utils/imagen'
 import ContactoCard from '@/components/mascotas/ContactoCard.vue'
 
 // Ventana emergente para los botones de una tarjeta. Según `modo` cambia el contenido:
@@ -8,6 +9,8 @@ import ContactoCard from '@/components/mascotas/ContactoCard.vue'
 //   avistamiento -> "La vi por aquí"    (dónde, hace cuánto, cómo estaba, detalles)
 //   reclamar     -> "¡Es mi mascota!"   (cómo la reconoce)
 //   resuelto     -> "Ya apareció"       (confirmación de quien publicó el reporte)
+//   eliminar     -> "Eliminar reporte"   (confirmación de quien publicó el reporte)
+// En "¡La encontré!" y "La vi por aquí" se puede adjuntar una foto para que su dueño compare.
 // Cuando el aviso se envía (`resultado`), muestra cómo contactar a quien publicó el reporte.
 const props = defineProps({
   modo: { type: String, default: '' }, // '' = cerrado
@@ -70,6 +73,11 @@ const t = computed(() => {
       placeholderNota: 'Ej: se llama Miel y tiene una mancha en la pata',
       boton: 'Avisar a quien la encontró',
     },
+    eliminar: {
+      titulo: '¿Eliminar este reporte?',
+      intro: 'Se borrarán también su historial, los avisos y las fotos. Esto no se puede deshacer.',
+      boton: 'Sí, eliminar',
+    },
     resuelto: {
       titulo: encontradaPorMi ? '¿Ya la entregaste a su familia?' : `¿Ya apareció ${nombre.value}?`,
       intro: encontradaPorMi
@@ -83,7 +91,9 @@ const t = computed(() => {
 
 const conLugar = computed(() => ['encontrada', 'avistamiento'].includes(props.modo))
 const conUbicacion = conLugar
-const pideTelefono = computed(() => !!props.modo && props.modo !== 'resuelto' && !auth.usuario?.telefono)
+const sinCampos = computed(() => ['resuelto', 'eliminar'].includes(props.modo))
+const conFoto = computed(() => ['encontrada', 'avistamiento'].includes(props.modo))
+const pideTelefono = computed(() => !!props.modo && !sinCampos.value && !auth.usuario?.telefono)
 
 const dialogo = ref(null)
 const lugar = ref('')
@@ -95,6 +105,10 @@ const telefono = ref('')
 const ubicacion = ref('') // enlace de mapa con la ubicación actual (opcional)
 const ubicando = ref(false)
 const errorUbicacion = ref('')
+const foto = ref(null) // foto ya reducida, lista para subir
+const vistaFoto = ref('')
+const errorFoto = ref('')
+const procesandoFoto = ref(false)
 
 const valido = computed(() => !conLugar.value || lugar.value.trim().length > 0)
 
@@ -120,6 +134,7 @@ watch(
       telefono.value = ''
       ubicacion.value = ''
       errorUbicacion.value = ''
+      quitarFoto()
       if (!dialogo.value.open) dialogo.value.showModal()
       await nextTick()
       // En el celular no se enfoca solo: el teclado taparía la ventana
@@ -151,6 +166,35 @@ function usarUbicacion() {
   )
 }
 
+function quitarFoto() {
+  if (vistaFoto.value) URL.revokeObjectURL(vistaFoto.value)
+  foto.value = null
+  vistaFoto.value = ''
+  errorFoto.value = ''
+}
+
+async function elegirFoto(e) {
+  const entrada = e.target
+  const a = entrada.files[0]
+  if (!a) return
+  quitarFoto()
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(a.type)) {
+    errorFoto.value = 'La foto debe ser JPG, PNG o WEBP'
+    entrada.value = ''
+    return
+  }
+  procesandoFoto.value = true
+  try {
+    foto.value = await prepararFoto(a)
+    vistaFoto.value = URL.createObjectURL(foto.value)
+  } catch (err) {
+    errorFoto.value = err.message
+    entrada.value = ''
+  } finally {
+    procesandoFoto.value = false
+  }
+}
+
 function elegirEstado(texto) {
   estado.value = estado.value === texto ? '' : texto
 }
@@ -167,6 +211,7 @@ function enviar() {
     hace_minutos: Number(hace.value),
     compartir_contacto: compartir.value,
     telefono: pideTelefono.value && compartir.value ? telefono.value.trim() : '',
+    foto: conFoto.value ? foto.value : null,
   })
 }
 </script>
@@ -191,7 +236,7 @@ function enviar() {
 
         <p v-if="error" class="alert alert-error" role="alert">{{ error }}</p>
 
-        <template v-if="modo !== 'resuelto'">
+        <template v-if="!sinCampos">
           <div v-if="conLugar" class="field">
             <label for="act-lugar">{{ t.lugar }}</label>
             <input id="act-lugar" v-model="lugar" required maxlength="120" autocomplete="off" :placeholder="t.placeholderLugar" />
@@ -227,6 +272,20 @@ function enviar() {
             <input id="act-estado" v-model="estado" maxlength="60" autocomplete="off" placeholder="O escríbelo con tus palabras" />
           </div>
 
+          <div v-if="conFoto" class="field">
+            <label for="act-foto">{{ modo === 'encontrada' ? 'Foto de cómo está (opcional)' : 'Foto (opcional)' }}</label>
+            <input id="act-foto" type="file" accept="image/jpeg,image/png,image/webp" @change="elegirFoto" />
+            <span v-if="procesandoFoto" class="field-hint" role="status">Preparando la foto…</span>
+            <span v-else-if="errorFoto" class="field-hint hint-error" role="alert">{{ errorFoto }}</span>
+            <span v-else-if="!vistaFoto" class="field-hint">
+              {{ modo === 'encontrada' ? 'Así su dueño puede comprobar que sí es su mascota.' : 'Ayuda a reconocerla.' }}
+            </span>
+            <div v-if="vistaFoto" class="foto-previa">
+              <img :src="vistaFoto" alt="Foto que vas a enviar" />
+              <button type="button" class="btn btn-secondary btn-sm" @click="quitarFoto">Quitar foto</button>
+            </div>
+          </div>
+
           <div class="field">
             <label for="act-nota">{{ t.nota }}</label>
             <input id="act-nota" v-model="nota" maxlength="200" autocomplete="off" :placeholder="t.placeholderNota" />
@@ -257,9 +316,9 @@ function enviar() {
 
         <div class="action-buttons">
           <button type="button" class="btn btn-secondary" :disabled="enviando" @click="emit('cerrar')">
-            {{ modo === 'resuelto' ? 'Todavía no' : 'Cancelar' }}
+            {{ modo === 'resuelto' ? 'Todavía no' : modo === 'eliminar' ? 'No, conservar' : 'Cancelar' }}
           </button>
-          <button type="submit" class="btn btn-primary" :disabled="enviando || !valido">
+          <button type="submit" class="btn" :class="modo === 'eliminar' ? 'btn-danger' : 'btn-primary'" :disabled="enviando || procesandoFoto || !valido">
             {{ enviando ? 'Enviando…' : t.boton }}
           </button>
         </div>
@@ -304,6 +363,9 @@ h2 { font-size: 1.5rem; }
 }
 .loc:disabled { opacity: 0.7; cursor: progress; }
 .hint-error { color: var(--color-danger); }
+.foto-previa { display: flex; align-items: center; gap: 0.8rem; }
+.foto-previa img { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; border: 1px solid var(--color-border); }
+.btn-danger { background: var(--color-danger); color: var(--color-white); }
 
 .check {
   display: flex;

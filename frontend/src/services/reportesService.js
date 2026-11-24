@@ -23,6 +23,17 @@ export default {
   // Cómo llamar o escribir a quien publicó el reporte
   contacto: (id) => apiReportes.get(`/reportes/${id}/contacto`),
   // Quien publicó el reporte confirma o descarta un aviso ("¿sí era mi mascota?")
+  // Mis reportes (los que yo publiqué), con cuántos avisos tiene cada uno
+  mios: () => apiReportes.get('/reportes/mios'),
+  // Quien publicó puede corregir el lugar y la descripción, o eliminar el reporte
+  actualizar: (id, datos) => apiReportes.put(`/reportes/${id}`, datos),
+  eliminar: (id) => apiReportes.delete(`/reportes/${id}`),
+  // Foto del aviso (¡La encontré! / La vi por aquí): se sube primero y su foto_url va en el aviso
+  subirFotoAviso(archivo) {
+    const form = new FormData()
+    form.append('foto', archivo)
+    return apiReportes.post('/reportes/fotos', form)
+  },
   confirmarNovedad: (id, novedadId) => apiReportes.put(`/reportes/${id}/novedades/${novedadId}/confirmar`),
   descartarNovedad: (id, novedadId) => apiReportes.put(`/reportes/${id}/novedades/${novedadId}/descartar`),
 }

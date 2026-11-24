@@ -4,6 +4,7 @@ import HomeView from '@/views/HomeView.vue'
 import EncontradasView from '@/views/EncontradasView.vue'
 import ReportarView from '@/views/ReportarView.vue'
 import NotificacionesView from '@/views/NotificacionesView.vue'
+import MisReportesView from '@/views/MisReportesView.vue'
 import HistorialView from '@/views/HistorialView.vue'
 import PlanesView from '@/views/PlanesView.vue'
 import LoginView from '@/views/LoginView.vue'
@@ -15,6 +16,8 @@ const router = createRouter({
     { path: '/', name: 'inicio', component: HomeView, meta: { requiereAuth: true } },
     { path: '/encontradas', name: 'encontradas', component: EncontradasView, meta: { requiereAuth: true } },
     { path: '/reportar', name: 'reportar', component: ReportarView, meta: { requiereAuth: true } },
+    { path: '/mis-reportes', name: 'mis-reportes', component: MisReportesView, meta: { requiereAuth: true } },
+    { path: '/reporte/:id(\\d+)/editar', name: 'editar', component: ReportarView, meta: { requiereAuth: true } },
     { path: '/notificaciones', name: 'notificaciones', component: NotificacionesView, meta: { requiereAuth: true } },
     { path: '/reporte/:id(\\d+)/historial', name: 'historial', component: HistorialView, meta: { requiereAuth: true } },
     { path: '/planes', name: 'planes', component: PlanesView }, // pública: es la vitrina de planes

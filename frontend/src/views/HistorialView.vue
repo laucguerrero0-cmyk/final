@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAcciones } from '@/composables/useAcciones'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useToast } from '@/composables/useToast'
 import reportesService from '@/services/reportesService'
 import { haceTiempo, parseFecha, urlFoto, partesConEnlaces } from '@/utils/format'
@@ -14,6 +15,7 @@ import ActionDialog from '@/components/mascotas/ActionDialog.vue'
 // reclamos y el final feliz). Quien publicó el reporte ve aquí los avisos de los demás, puede llamar o escribir
 // a quien los dejó y confirmar si de verdad era su mascota.
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const { mostrar } = useToast()
 
@@ -36,19 +38,25 @@ async function cargar(silencioso = false) {
     esDueno.value = data.es_dueno
     eventos.value = data.eventos
   } catch (e) {
+    if (silencioso && reporte.value && e.response?.status !== 404) return // fallo pasajero: se conserva lo que ya se ve
     reporte.value = null
     error.value = e.response ? e.response.data?.error || 'No se pudo cargar el historial' : 'No se pudo conectar con el servidor'
   } finally {
     cargando.value = false
   }
 }
-onMounted(cargar)
+onMounted(() => cargar())
+useAutoRefresh(() => cargar(true)) // se actualiza solo: avisos nuevos, confirmaciones, final feliz
 watch(id, () => {
   contactoPublicador.value = null
   cargar()
 })
 
-const acciones = useAcciones(() => cargar(true))
+const acciones = useAcciones((eliminado) => {
+  if (eliminado) router.replace('/mis-reportes') // el reporte ya no existe
+  else cargar(true)
+})
+const fotoAmpliada = ref('')
 
 const r = computed(() => reporte.value)
 const perdida = computed(() => r.value?.tipo === 'perdida')
@@ -196,6 +204,8 @@ const mensajeAlPublicador = computed(() => {
           <button class="btn btn-cta" @click="acciones.resolver(r)">
             {{ perdida ? 'Ya apareció' : 'Ya la entregué' }}
           </button>
+          <RouterLink :to="{ name: 'editar', params: { id: r.id } }" class="btn btn-secondary">✏️ Editar</RouterLink>
+          <button class="btn btn-secondary btn-borrar" @click="acciones.eliminar(r)">🗑️ Eliminar</button>
         </template>
         <template v-else>
           <button v-if="perdida" class="btn btn-cta" @click="acciones.abrir('encontrada', r)">¡La encontré!</button>
@@ -237,6 +247,14 @@ const mensajeAlPublicador = computed(() => {
               </template>
             </p>
 
+            <!-- Foto que mandó quien avisó: su dueño la compara con la de su mascota -->
+            <div v-if="e.foto_url" class="lt-foto">
+              <button type="button" class="lt-foto-btn" :aria-label="`Ver más grande la foto de ${quien(e)}`" @click="fotoAmpliada = urlFoto(e.foto_url)">
+                <img :src="urlFoto(e.foto_url)" :alt="`Foto enviada por ${quien(e)}`" loading="lazy" />
+              </button>
+              <p v-if="esDueno && e.puede_revisar" class="lt-foto-pista">Compárala con la foto de tu mascota (arriba) antes de confirmar.</p>
+            </div>
+
             <!-- Solo quien publicó el reporte ve el contacto, y solo si la otra persona decidió compartirlo -->
             <ContactoCard v-if="e.contacto" compacto :contacto="e.contacto" :mensaje="mensajeWhatsapp(e)" />
 
@@ -255,6 +273,10 @@ const mensajeAlPublicador = computed(() => {
         </li>
       </ol>
     </template>
+
+    <dialog v-if="fotoAmpliada" :ref="(el) => el && !el.open && el.showModal()" class="zoom" @close="fotoAmpliada = ''" @click="fotoAmpliada = ''">
+      <img :src="fotoAmpliada" alt="Foto ampliada" />
+    </dialog>
 
     <ActionDialog
       :modo="acciones.modo.value"
@@ -319,6 +341,15 @@ const mensajeAlPublicador = computed(() => {
   border: 1px solid var(--color-sun);
 }
 .contacto-publicador { margin-bottom: 0.6rem; }
+.btn-borrar { color: var(--color-danger); }
+
+.lt-foto { display: flex; flex-direction: column; gap: 0.35rem; }
+.lt-foto-btn { padding: 0; border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; background: var(--color-mist); cursor: zoom-in; width: min(100%, 260px); }
+.lt-foto-btn img { display: block; width: 100%; max-height: 260px; object-fit: cover; }
+.lt-foto-pista { font-size: 0.82rem; font-weight: 700; color: var(--color-ink-soft); }
+.zoom { margin: auto; padding: 0; border: none; background: transparent; max-width: 96vw; max-height: 94dvh; }
+.zoom::backdrop { background: rgba(15, 30, 30, 0.85); }
+.zoom img { display: block; max-width: 96vw; max-height: 92dvh; border-radius: 12px; }
 
 /* Línea de tiempo */
 .lt-titulo { font-size: 1.4rem; margin: 1.6rem 0 1rem; }

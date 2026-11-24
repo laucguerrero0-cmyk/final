@@ -6,23 +6,34 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import uuid
-
-from flask import Flask, request, jsonify, g, send_from_directory
+from flask import Flask, Response, request, jsonify, g, send_from_directory
 from flask_cors import CORS
 
 from common.contacto import capitalizar, texto_o_none
 from common.db import consultar, ejecutar
+from common.fotos import DemasiadasFotos, borrar_foto, guardar_foto, validar_foto_url
+from common.migraciones import asegurar_esquema
 from common.seguridad import token_requerido, campos_faltantes
 
 app = Flask(__name__)
 CORS(app)                          # permite que el frontend de Vue (otro puerto) consuma esta API
 app.json.ensure_ascii = False
-app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024        # fotos de máximo 4 MB
+# El frontend reduce cada foto antes de subirla (queda en menos de 1 MB), aunque la original pese 20 MB.
+# Este límite es la red de seguridad: lo que llegue sin reducir y pase de 5 MB se rechaza.
+MAX_FOTO_MB = 5
+app.config["MAX_CONTENT_LENGTH"] = (MAX_FOTO_MB + 1) * 1024 * 1024    # + margen del formulario multipart
 
+# Las fotos viven en la base de datos (ver common/fotos.py). Esta carpeta solo sirve para las fotos
+# antiguas que se hubieran guardado como archivo antes de este cambio.
 CARPETA_FOTOS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
-EXTENSIONES = {"jpg", "jpeg", "png", "webp"}
-os.makedirs(CARPETA_FOTOS, exist_ok=True)
+
+# Agrega (sin borrar nada) las tablas y columnas nuevas de la base compartida; ver common/migraciones.py
+asegurar_esquema()
+
+
+@app.before_request
+def _esquema_listo():
+    asegurar_esquema()             # si la base no respondió al arrancar, reintenta aquí
 
 
 def puede_modificar(mascota):
@@ -51,13 +62,14 @@ def registrar_mascota():
         return jsonify(error="Faltan campos obligatorios", campos=falta), 400
     try:
         limpios = {c: limpiar_campo(c, datos.get(c)) for c in LIMITES}
+        foto_url = validar_foto_url(datos.get("foto_url"))
     except ValueError as e:
         return jsonify(error=f"Revisa los datos de la mascota: {e}"), 400
     nuevo_id = ejecutar(
         "INSERT INTO mascotas (nombre, especie, raza, color, descripcion, foto_url, usuario_id) "
         "VALUES (%s, %s, %s, %s, %s, %s, %s)",
         (limpios["nombre"], limpios["especie"], limpios["raza"], limpios["color"],
-         limpios["descripcion"], datos.get("foto_url"), g.usuario["id"]),
+         limpios["descripcion"], foto_url, g.usuario["id"]),
     )
     return jsonify(mensaje="Mascota registrada correctamente", id=nuevo_id), 201
 
@@ -95,6 +107,7 @@ def actualizar_mascota(id):
     datos = request.get_json(silent=True) or {}
     try:
         limpios = {c: (limpiar_campo(c, datos[c]) if c in datos else mascota[c]) for c in LIMITES}
+        foto_url = validar_foto_url(datos["foto_url"]) if "foto_url" in datos else mascota["foto_url"]
     except ValueError as e:
         return jsonify(error=f"Revisa los datos de la mascota: {e}"), 400
     if not limpios["nombre"] or not limpios["especie"]:
@@ -102,7 +115,7 @@ def actualizar_mascota(id):
     ejecutar(
         "UPDATE mascotas SET nombre = %s, especie = %s, raza = %s, color = %s, descripcion = %s, foto_url = %s WHERE id = %s",
         (limpios["nombre"], limpios["especie"], limpios["raza"], limpios["color"], limpios["descripcion"],
-         datos.get("foto_url", mascota["foto_url"]), id),
+         foto_url, id),
     )
     return jsonify(mensaje="Mascota actualizada correctamente")
 
@@ -117,6 +130,7 @@ def eliminar_mascota(id):
     if not puede_modificar(mascota):
         return jsonify(error="Solo el dueño del registro o un administrador puede eliminarlo"), 403
     ejecutar("DELETE FROM mascotas WHERE id = %s", (id,))
+    borrar_foto(mascota["foto_url"])
     return jsonify(mensaje="Mascota eliminada correctamente")
 
 
@@ -132,25 +146,33 @@ def subir_foto(id):
     archivo = request.files.get("foto")
     if not archivo or not archivo.filename:
         return jsonify(error="Falta el archivo (campo 'foto')"), 400
-    extension = archivo.filename.rsplit(".", 1)[-1].lower() if "." in archivo.filename else ""
-    if extension not in EXTENSIONES:
-        return jsonify(error="La foto debe ser JPG, PNG o WEBP"), 400
-
-    nombre = f"mascota_{id}_{uuid.uuid4().hex[:8]}.{extension}"
-    archivo.save(os.path.join(CARPETA_FOTOS, nombre))
-    ejecutar("UPDATE mascotas SET foto_url = %s WHERE id = %s", (f"/uploads/{nombre}", id))
-    return jsonify(mensaje="Foto guardada", foto_url=f"/uploads/{nombre}")
+    try:
+        foto_url = guardar_foto(archivo, g.usuario["id"], prefijo=f"mascota_{id}")
+    except DemasiadasFotos as e:
+        return jsonify(error=str(e)), 429
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    ejecutar("UPDATE mascotas SET foto_url = %s WHERE id = %s", (foto_url, id))
+    borrar_foto(mascota["foto_url"])        # la foto anterior ya no se necesita
+    return jsonify(mensaje="Foto guardada", foto_url=foto_url)
 
 
 # 7. GET /uploads/<archivo>  -> servir las fotos (público: las usa la etiqueta <img>)
+#    Los nombres son únicos y nunca cambian de contenido, por eso el navegador puede guardarlas mucho tiempo.
 @app.route("/uploads/<path:archivo>", methods=["GET"])
 def ver_foto(archivo):
-    return send_from_directory(CARPETA_FOTOS, archivo)
+    foto = consultar("SELECT tipo, contenido FROM fotos WHERE nombre = %s", (archivo,), uno=True)
+    if foto:
+        return Response(foto["contenido"], mimetype=foto["tipo"], headers={
+            "Cache-Control": "public, max-age=604800, immutable",
+            "X-Content-Type-Options": "nosniff",
+        })
+    return send_from_directory(CARPETA_FOTOS, archivo)      # fotos antiguas guardadas como archivo (404 si no están)
 
 
 @app.errorhandler(413)
 def foto_muy_grande(_):
-    return jsonify(error="La foto pesa más de 4 MB"), 413
+    return jsonify(error=f"La foto pesa más de {MAX_FOTO_MB} MB. Prueba con otra o con menos calidad"), 413
 
 
 if __name__ == "__main__":

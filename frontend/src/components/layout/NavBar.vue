@@ -54,6 +54,7 @@ function cerrarSesion() {
           <template v-if="auth.estaAutenticado">
             <RouterLink to="/">Perdidas</RouterLink>
             <RouterLink to="/encontradas">Encontradas</RouterLink>
+            <RouterLink to="/mis-reportes">Mis reportes</RouterLink>
           </template>
           <RouterLink to="/planes">Planes</RouterLink>
         </div>

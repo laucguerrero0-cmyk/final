@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import reportesService from '@/services/reportesService'
+import { prepararFoto } from '@/utils/imagen'
 
 // Maneja los botones de las tarjetas (¡La encontré!, La vi por aquí, ¡Es mi mascota!, Ya apareció)
 // y la ventana emergente que piden. `alTerminar` recarga la lista de la pantalla.
@@ -9,7 +10,7 @@ export function useAcciones(alTerminar) {
   const auth = useAuthStore()
   const { mostrar } = useToast()
 
-  const modo = ref('') // '' | 'encontrada' | 'avistamiento' | 'reclamar' | 'resuelto'
+  const modo = ref('') // '' | 'encontrada' | 'avistamiento' | 'reclamar' | 'resuelto' | 'eliminar'
   const seleccionada = ref(null)
   const enviando = ref(false)
   const errorDialogo = ref('')
@@ -17,7 +18,7 @@ export function useAcciones(alTerminar) {
   const resultado = ref(null)
 
   const textoError = (e, defecto) =>
-    e.response ? e.response.data?.error || defecto : 'No se pudo conectar con el servidor. Intenta de nuevo.'
+    e.response ? e.response.data?.error || defecto : e.message?.startsWith('La foto') || e.message?.startsWith('No pudimos') ? e.message : 'No se pudo conectar con el servidor. Intenta de nuevo.'
 
   function abrir(nuevoModo, reporte) {
     errorDialogo.value = ''
@@ -40,7 +41,7 @@ export function useAcciones(alTerminar) {
     enviando.value = true
     errorDialogo.value = ''
     try {
-      const { telefono, ...cuerpo } = datos
+      const { telefono, foto, ...cuerpo } = datos
       if (telefono) await auth.guardarTelefono(telefono) // para que puedan contactarla
 
       if (modo.value === 'resuelto') {
@@ -50,6 +51,20 @@ export function useAcciones(alTerminar) {
         cerrar()
         alTerminar()
         return
+      }
+
+      if (modo.value === 'eliminar') {
+        await reportesService.eliminar(reporte.id)
+        mostrar('Tu reporte fue eliminado.')
+        cerrar()
+        alTerminar(true)
+        return
+      }
+
+      // Foto opcional del aviso: se sube primero y luego se adjunta
+      if (foto) {
+        const { data: subida } = await reportesService.subirFotoAviso(await prepararFoto(foto))
+        cuerpo.foto_url = subida.foto_url
       }
 
       const enviar = {
@@ -72,5 +87,10 @@ export function useAcciones(alTerminar) {
     abrir('resuelto', reporte)
   }
 
-  return { modo, seleccionada, enviando, errorDialogo, resultado, abrir, cerrar, confirmar, resolver }
+  // Eliminar un reporte propio (pide confirmación en la ventana)
+  function eliminar(reporte) {
+    abrir('eliminar', reporte)
+  }
+
+  return { eliminar, modo, seleccionada, enviando, errorDialogo, resultado, abrir, cerrar, confirmar, resolver }
 }
